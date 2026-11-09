@@ -1,0 +1,75 @@
+# ==============================================================================
+# TutorMatch - Git Ignore Configuration
+# Qt 6 / C++17 / QML / CMake Flat-File Project
+# ==============================================================================
+
+# 1. Build Outputs and Directories
+build/
+bin/
+lib/
+out/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.ninja
+.ninja_*
+
+# 2. Compiled Binaries, Objects & Debug Symbols
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
+
+# 3. Qt Deployment Artifacts (windeployqt in root)
+/generic/
+/iconengines/
+/imageformats/
+/networkinformation/
+/platforms/
+/qml/
+/qmltooling/
+/tls/
+/translations/
+
+# 4. IDE, Tooling & Machine Configuration
+.qtcreator/
+CMakeLists.txt.user*
+*.user
+*.user.*
+.vscode/
+.idea/
+.vs/
+*.vcxproj*
+*.sln
+
+# 5. Flat-File Runtime Database & Sensitive Records (Strictly Excluded)
+/data/*.dat
+/data/*.dat.tmp
+/data/archive/
+/data/backup_*/
+/data/staging_*/
+!/data/.gitkeep
+
+# 6. Test Sandboxes & Temporary Files
+test_*_data/
+tutormatch_*_sandbox/
+*.tmp
+*.log
+
+# 7. Scratch Directories
+/scratch/
+
+# 8. OS Generated Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

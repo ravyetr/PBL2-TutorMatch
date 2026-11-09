@@ -1,0 +1,11 @@
+module TutorMatch
+singleton Theme 1.0 Theme.qml
+LoginView 1.0 LoginView.qml
+MainDashboard 1.0 MainDashboard.qml
+AdminOverviewView 1.0 AdminOverviewView.qml
+AdminMatchesView 1.0 AdminMatchesView.qml
+AdminReviewsView 1.0 AdminReviewsView.qml
+StudentBookingsView 1.0 StudentBookingsView.qml
+TutorBookings 1.0 TutorBookings.qml
+TutorStudents 1.0 TutorStudents.qml
+SegmentedFilterButton 1.0 SegmentedFilterButton.qml

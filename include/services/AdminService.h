@@ -1,0 +1,61 @@
+#ifndef TUTOR_MATCH_ADMIN_SERVICE_H
+#define TUTOR_MATCH_ADMIN_SERVICE_H
+
+#include "../models/User.h"
+#include "../models/CourseBooking.h"
+#include "../models/Review.h"
+#include "../storage/IRepository.h"
+#include "BookingService.h"
+#include <memory>
+#include <string>
+#include <vector>
+#include <mutex>
+
+namespace TutorMatch {
+
+struct AdminMetrics {
+    int totalTutors = 0;
+    int totalStudents = 0;
+    int totalBookings = 0;
+    int completedBookings = 0;
+    int activeMatches = 0;
+    int pendingVerification = 0;
+};
+
+/**
+ * AdminService:
+ * Implements Single Responsibility Principle (SRP) for platform administration,
+ * audit metrics, moderation, and reporting.
+ *
+ * Implements DIP and ISP by depending on IUserRepository, IReviewRepository,
+ * and BookingService.
+ */
+class AdminService {
+private:
+    std::shared_ptr<IUserRepository> userRepo;
+    std::shared_ptr<IReviewRepository> reviewRepo;
+    std::shared_ptr<BookingService> bookingService;
+
+    mutable std::mutex adminMutex;
+
+public:
+    AdminService(std::shared_ptr<IUserRepository> uRepo,
+                 std::shared_ptr<IReviewRepository> rRepo,
+                 std::shared_ptr<BookingService> bService);
+    virtual ~AdminService() = default;
+
+    AdminMetrics calculateMetrics();
+
+    std::vector<std::shared_ptr<User>> getAllUsers();
+    std::vector<std::shared_ptr<User>> getFilteredUsers(const std::string& filter,
+                                                        const std::string& searchKeyword);
+
+    bool verifyTutor(int tutorId, bool approve, std::string& outMsg);
+    bool toggleUserLock(int userId, std::string& outMsg);
+    bool deleteViolatingReview(int reviewId, std::string& outMsg);
+    bool terminateMatch(int bookingId, std::string& outMsg);
+};
+
+} // namespace TutorMatch
+
+#endif // TUTOR_MATCH_ADMIN_SERVICE_H

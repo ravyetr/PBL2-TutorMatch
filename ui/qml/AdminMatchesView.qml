@@ -27,7 +27,11 @@ Rectangle {
         var list = []
         for (var i = 0; i < matchesModel.length; i++) {
             var m = matchesModel[i]
-            if (m.status === targetStatus) {
+            if (activeFilterIndex === 2) {
+                if (m.status === "CANCELLED" || m.status === "REJECTED" || m.status === "EARLY_TERMINATED") {
+                    list.push(m)
+                }
+            } else if (m.status === targetStatus) {
                 list.push(m)
             }
         }
@@ -154,138 +158,223 @@ Rectangle {
             }
 
             // 3. Match Cards List
-            ListView {
-                id: matchesListView
+            ColumnLayout {
+                id: matchesRowsCol
                 Layout.fillWidth: true
-                implicitHeight: Math.max(300, count * 86)
-                clip: true
                 spacing: 10
-                model: adminMatchesView.filteredMatches()
 
-                delegate: Rectangle {
-                    width: matchesListView.width
-                    height: 80
-                    color: Theme.cardBg
-                    radius: 8
-                    border.color: Theme.cardBorder
-                    border.width: 1
+                Repeater {
+                    id: matchesRepeater
+                    model: adminMatchesView.filteredMatches()
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 16
-                        anchors.rightMargin: 16
-                        spacing: 14
+                    Rectangle {
+                        id: rowCard
+                        Layout.fillWidth: true
+                        implicitHeight: 84
+                        color: Theme.cardBg
+                        radius: 8
+                        border.color: Theme.cardBorder
+                        border.width: 1
+                        clip: true
 
-                        // Icon Indicator
-                        Rectangle {
-                            width: 40
-                            height: 40
-                            radius: 20
-                            color: (modelData.status === "ACCEPTED") ? "#e6f7ff" :
-                                   (modelData.status === "COMPLETED") ? "#f6ffed" : "#fff1f0"
+                        RowLayout {
+                            id: rowLayout
+                            anchors.fill: parent
+                            anchors.leftMargin: 16
+                            anchors.rightMargin: 16
+                            spacing: 16
 
-                            Text {
-                                anchors.centerIn: parent
-                                text: (modelData.status === "ACCEPTED") ? "🔗" :
-                                      (modelData.status === "COMPLETED") ? "✓" : "✕"
-                                font.pixelSize: 16
-                            }
-                        }
-
-                        // Participant Info (Student <-> Tutor & Subject)
-                        ColumnLayout {
-                            Layout.preferredWidth: 240
-                            spacing: 2
-
-                            Text {
-                                text: modelData.studentName + " ↔ " + modelData.tutorName
-                                font.bold: true
-                                font.pixelSize: 13
-                                color: Theme.textDark
-                                elide: Text.ElideRight
-                            }
-
-                            Text {
-                                text: "Môn học: " + modelData.subject + " · " + (modelData.hourlyRate ? modelData.hourlyRate.toLocaleString(Qt.locale("vi_VN"), 'f', 0) + " VNĐ/buổi" : "")
-                                font.pixelSize: 11
-                                color: Theme.textMuted
-                                elide: Text.ElideRight
-                            }
-
-                            Text {
-                                text: modelData.isCourse ?
-                                      ("Ngày bắt đầu: " + modelData.startDate + " (" + modelData.weeksCount + " tuần) · Tạo ngày: " + modelData.createdAt) :
-                                      ("Ngày tạo: " + modelData.createdAt)
-                                font.pixelSize: 10
-                                color: Theme.textMuted
-                            }
-                        }
-
-                        // Schedule Time Slot
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
-
-                            Text {
-                                text: "Lịch học cố định:"
-                                font.pixelSize: 11
-                                color: Theme.textMuted
-                            }
-                            Text {
-                                text: modelData.slotText || modelData.slotLabel || ""
-                                font.bold: true
-                                font.pixelSize: 12
-                                color: Theme.textDark
-                                elide: Text.ElideRight
-                            }
-                        }
-
-                        // Status Badge
-                        Rectangle {
-                            implicitWidth: statusTextElem.implicitWidth + 16
-                            height: 26
-                            radius: 4
-                            color: (modelData.status === "ACCEPTED") ? "#e6f7ff" :
-                                   (modelData.status === "COMPLETED") ? "#f6ffed" : "#fff1f0"
-                            border.color: (modelData.status === "ACCEPTED") ? "#91d5ff" :
-                                          (modelData.status === "COMPLETED") ? "#b7eb8f" : "#ffa39e"
-                            border.width: 1
-
-                            Text {
-                                id: statusTextElem
-                                anchors.centerIn: parent
-                                text: modelData.statusText || modelData.status
-                                font.pixelSize: 10
-                                font.bold: true
-                                color: (modelData.status === "ACCEPTED") ? "#096dd9" :
-                                       (modelData.status === "COMPLETED") ? "#389e0d" : "#cf1322"
-                            }
-                        }
-
-                        // Action Button: [Đóng kết nối] (Only for ACCEPTED)
-                        Button {
-                            visible: (modelData.status === "ACCEPTED")
-                            text: "Đóng kết nối"
-                            contentItem: Text {
-                                text: parent.text
-                                font.pixelSize: 11
-                                font.bold: true
-                                color: "#cf1322"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
-                            background: Rectangle {
-                                implicitWidth: 100
-                                implicitHeight: 30
-                                radius: 4
-                                color: parent.hovered ? "#ffa39e" : "#fff1f0"
-                                border.color: "#ffa39e"
+                            // 1. Icon Indicator
+                            Rectangle {
+                                Layout.preferredWidth: 40
+                                Layout.preferredHeight: 40
+                                radius: 20
+                                color: (modelData.status === "ACCEPTED") ? "#e6f7ff" :
+                                       (modelData.status === "COMPLETED") ? "#f6ffed" :
+                                       (modelData.status === "PENDING") ? "#fffbe6" :
+                                       (modelData.status === "EARLY_TERMINATED") ? "#fff7e6" : "#fff1f0"
+                                border.color: (modelData.status === "ACCEPTED") ? "#91d5ff" :
+                                              (modelData.status === "COMPLETED") ? "#b7eb8f" :
+                                              (modelData.status === "PENDING") ? "#ffe58f" :
+                                              (modelData.status === "EARLY_TERMINATED") ? "#ffa940" : "#ffa39e"
                                 border.width: 1
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: (modelData.status === "ACCEPTED") ? "🔗" :
+                                          (modelData.status === "COMPLETED") ? "✓" :
+                                          (modelData.status === "PENDING") ? "⏳" :
+                                          (modelData.status === "EARLY_TERMINATED") ? "⛔" : "✕"
+                                    font.pixelSize: 16
+                                }
                             }
-                            onClicked: {
-                                adminMatchesView.pendingTerminateId = modelData.id
-                                adminMatchesView.pendingTerminateLabel = modelData.studentName + " ↔ " + modelData.tutorName + " (" + modelData.subject + ")"
-                                confirmModal.open()
+
+                            // 2. Region A: Student ↔ Tutor Identity & Course Subject
+                            ColumnLayout {
+                                id: regionA
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 230
+                                Layout.preferredWidth: 320
+                                Layout.maximumWidth: 420
+                                spacing: 3
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    text: (modelData.studentName || "Học viên") + " ↔ " + (modelData.tutorName || "Gia sư")
+                                    font.bold: true
+                                    font.pixelSize: 13
+                                    color: Theme.textDark
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 1
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    text: "📚 " + (modelData.subject || "Khóa học") + (modelData.hourlyRate ? (" · " + modelData.hourlyRate.toLocaleString(Qt.locale("vi_VN"), 'f', 0) + " đ/buổi") : "")
+                                    font.pixelSize: 11
+                                    color: Theme.textMuted
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 1
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    text: "📅 Tạo ngày: " + (modelData.createdAt || "N/A")
+                                    font.pixelSize: 10
+                                    color: Theme.textMuted
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 1
+                                }
+                            }
+
+                            // 3. Region B: Schedule Information
+                            ColumnLayout {
+                                id: regionB
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 200
+                                Layout.preferredWidth: 260
+                                spacing: 3
+                                Layout.alignment: Qt.AlignVCenter
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    spacing: 5
+
+                                    Text {
+                                        text: "⏰"
+                                        font.pixelSize: 11
+                                        Layout.alignment: Qt.AlignVCenter
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        text: modelData.slotText || modelData.slotLabel || "Chưa cập nhật ca học"
+                                        font.bold: true
+                                        font.pixelSize: 12
+                                        color: Theme.textDark
+                                        elide: Text.ElideRight
+                                        maximumLineCount: 1
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    spacing: 5
+
+                                    Text {
+                                        text: "🗓️"
+                                        font.pixelSize: 10
+                                        Layout.alignment: Qt.AlignVCenter
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        text: modelData.isCourse ?
+                                              ("Khóa " + (modelData.weeksCount || 4) + " tuần · Bắt đầu: " + (modelData.startDate || "N/A")) :
+                                              ("Bắt đầu: " + (modelData.startDate || modelData.createdAt || "N/A"))
+                                        font.pixelSize: 11
+                                        color: Theme.textMuted
+                                        elide: Text.ElideRight
+                                        maximumLineCount: 1
+                                    }
+                                }
+                            }
+
+                            // 4. Region C: Status Badge & Action Controls
+                            RowLayout {
+                                id: regionC
+                                Layout.preferredWidth: 220
+                                Layout.minimumWidth: 120
+                                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                spacing: 8
+
+                                Item { Layout.fillWidth: true } // Pushes status and button to the right
+
+                                Rectangle {
+                                    id: statusBadge
+                                    implicitWidth: Math.max(92, statusLabel.implicitWidth + 18)
+                                    height: 26
+                                    radius: 4
+                                    color: (modelData.status === "ACCEPTED") ? "#e6f7ff" :
+                                           (modelData.status === "COMPLETED") ? "#f6ffed" :
+                                           (modelData.status === "PENDING") ? "#fffbe6" :
+                                           (modelData.status === "EARLY_TERMINATED") ? "#fff7e6" : "#fff1f0"
+                                    border.color: (modelData.status === "ACCEPTED") ? "#91d5ff" :
+                                                  (modelData.status === "COMPLETED") ? "#b7eb8f" :
+                                                  (modelData.status === "PENDING") ? "#ffe58f" :
+                                                  (modelData.status === "EARLY_TERMINATED") ? "#ffa940" : "#ffa39e"
+                                    border.width: 1
+
+                                    Text {
+                                        id: statusLabel
+                                        anchors.centerIn: parent
+                                        text: (modelData.status === "EARLY_TERMINATED") ? "KẾT THÚC SỚM" :
+                                              (modelData.status === "ACCEPTED") ? "ĐANG HỌC" :
+                                              (modelData.statusText || modelData.status)
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                        color: (modelData.status === "ACCEPTED") ? "#096dd9" :
+                                               (modelData.status === "COMPLETED") ? "#389e0d" :
+                                               (modelData.status === "PENDING") ? "#d48806" :
+                                               (modelData.status === "EARLY_TERMINATED") ? "#d46b08" : "#cf1322"
+                                    }
+                                }
+
+                                Button {
+                                    id: terminateBtn
+                                    visible: (modelData.status === "ACCEPTED")
+                                    text: "Đóng kết nối"
+                                    contentItem: Text {
+                                        text: parent.text
+                                        font.pixelSize: 11
+                                        font.bold: true
+                                        color: "#cf1322"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    background: Rectangle {
+                                        implicitWidth: 95
+                                        implicitHeight: 28
+                                        radius: 4
+                                        color: parent.hovered ? "#ffa39e" : "#fff1f0"
+                                        border.color: "#ffa39e"
+                                        border.width: 1
+                                    }
+                                    onClicked: {
+                                        adminMatchesView.pendingTerminateId = modelData.id
+                                        adminMatchesView.pendingTerminateLabel = modelData.studentName + " ↔ " + modelData.tutorName + " (" + modelData.subject + ")"
+                                        confirmModal.open()
+                                    }
+                                }
                             }
                         }
                     }
@@ -293,14 +382,30 @@ Rectangle {
 
                 // Empty State Placeholder
                 Rectangle {
-                    anchors.centerIn: parent
+                    Layout.fillWidth: true
+                    height: 180
                     visible: adminMatchesView.filteredMatches().length === 0
-                    color: "transparent"
-                    Text {
+                    radius: 8
+                    color: Theme.bgApp
+                    border.color: Theme.cardBorder
+                    border.width: 1
+
+                    ColumnLayout {
                         anchors.centerIn: parent
-                        text: "Không có lớp học nào ở trạng thái này"
-                        font.pixelSize: 13
-                        color: Theme.textMuted
+                        spacing: 8
+                        Text {
+                            text: "🔗 Chưa có lớp học nào ở trạng thái này"
+                            font.bold: true
+                            font.pixelSize: 15
+                            color: Theme.textDark
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                        Text {
+                            text: "Các kết nối lớp học sẽ tự động hiển thị tại đây khi người dùng đặt lịch và được duyệt."
+                            font.pixelSize: 12
+                            color: Theme.textMuted
+                            Layout.alignment: Qt.AlignHCenter
+                        }
                     }
                 }
             }

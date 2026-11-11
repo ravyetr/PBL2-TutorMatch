@@ -34,6 +34,7 @@ set(CORE_SOURCES
     src/storage/repositories/FileCourseBookingRepository.cpp
     src/storage/repositories/FileReviewRepository.cpp
     src/algorithms/MatchingEngine.cpp
+    src/algorithms/TutorSearchMatcher.cpp
     src/services/AuthService.cpp
     src/services/UserService.cpp
     src/services/BookingService.cpp
@@ -76,6 +77,7 @@ set(HEADERS
     include/storage/repositories/FileReviewRepository.h
     include/algorithms/IMatchingStrategy.h
     include/algorithms/MatchingEngine.h
+    include/algorithms/TutorSearchMatcher.h
     include/services/AuthService.h
     include/services/UserService.h
     include/services/BookingService.h
@@ -186,6 +188,7 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/TestRunner.cpp")
         src/storage/repositories/FileCourseBookingRepository.cpp
         src/storage/repositories/FileReviewRepository.cpp
         src/algorithms/MatchingEngine.cpp
+        src/algorithms/TutorSearchMatcher.cpp
         src/services/AuthService.cpp
         src/services/UserService.cpp
         src/services/BookingService.cpp

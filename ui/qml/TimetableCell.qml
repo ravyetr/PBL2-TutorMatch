@@ -30,6 +30,12 @@ Rectangle {
     readonly property bool isBusy: status === "BUSY"
     readonly property bool isFree: !isBooked && !isBusy
 
+    // Adaptive sizing helpers for vertical constraints
+    readonly property bool hasBadge: sessionLabel !== ""
+    readonly property bool isUltraCompact: height < 40
+    readonly property bool isCompact: height < 48
+
+    clip: true
     radius: 6
     border.width: 1
     border.color: isBooked ? Theme.slotBookedText :
@@ -62,61 +68,74 @@ Rectangle {
 
     Column {
         id: textColumn
-        anchors.centerIn: parent
-        width: parent.width - 6
-        spacing: 2
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 4
+        anchors.rightMargin: 4
+        spacing: (cellRoot.isCompact && cellRoot.hasBadge) ? 1 : 2
         z: 10
         visible: cellRoot.isBooked
 
         // Session badge (e.g. Buổi 1/4)
         Row {
             anchors.horizontalCenter: parent.horizontalCenter
-            visible: cellRoot.sessionLabel !== ""
-            spacing: 3
+            visible: cellRoot.hasBadge
+            spacing: 2
+
             Rectangle {
-                implicitWidth: badgeTxt.implicitWidth + 8
-                implicitHeight: 14
+                implicitWidth: Math.min(parent.parent ? parent.parent.width : 60, badgeTxt.implicitWidth + 8)
+                implicitHeight: cellRoot.isUltraCompact ? 10 : (cellRoot.isCompact ? 11 : 13)
                 radius: 3
                 color: Theme.cBurgundy
+
                 Text {
                     id: badgeTxt
                     anchors.centerIn: parent
                     text: cellRoot.sessionLabel
                     font.bold: true
-                    font.pixelSize: 8
+                    font.pixelSize: cellRoot.isUltraCompact ? 7 : (cellRoot.isCompact ? 7.5 : 8)
                     color: Theme.textLight
                 }
             }
         }
 
-        // Primary Text: Counterpart User Name (displayName)
-        Text {
-            id: primaryTxt
-            objectName: "primaryTextItem"
+        // Information Column: Counterpart Name + Subject Name with distinct vertical spacing
+        Column {
+            id: infoColumn
             width: parent.width
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            text: cellRoot.displayName || cellRoot.primaryText || cellRoot.tutorName || cellRoot.studentName || cellRoot.label || ""
-            font.bold: true
-            font.pixelSize: 11
-            color: Theme.slotBookedText
-            elide: Text.ElideRight
-            maximumLineCount: 1
-        }
+            spacing: cellRoot.isUltraCompact ? 1 : ((cellRoot.isCompact && cellRoot.hasBadge) ? 2 : 3)
 
-        // Secondary Text: Subject Name (subjectName)
-        Text {
-            id: secondaryTxt
-            objectName: "secondaryTextItem"
-            width: parent.width
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            visible: cellRoot.subjectName !== "" || cellRoot.secondaryText !== "" || cellRoot.subLabel !== ""
-            text: cellRoot.subjectName || cellRoot.secondaryText || cellRoot.subLabel
-            font.pixelSize: 10
-            color: Theme.slotBookedText
-            elide: Text.ElideRight
-            maximumLineCount: 1
+            // Primary Text: Counterpart User Name (displayName)
+            Text {
+                id: primaryTxt
+                objectName: "primaryTextItem"
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                text: cellRoot.displayName || cellRoot.primaryText || cellRoot.tutorName || cellRoot.studentName || cellRoot.label || ""
+                font.bold: true
+                font.pixelSize: cellRoot.isUltraCompact ? 8.5 : ((cellRoot.isCompact && cellRoot.hasBadge) ? 9.5 : (cellRoot.height >= 52 ? 11 : 10.5))
+                color: Theme.slotBookedText
+                elide: Text.ElideRight
+                maximumLineCount: 1
+            }
+
+            // Secondary Text: Subject Name (subjectName)
+            Text {
+                id: secondaryTxt
+                objectName: "secondaryTextItem"
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                visible: text !== ""
+                text: cellRoot.subjectName || cellRoot.secondaryText || cellRoot.subLabel || ""
+                font.pixelSize: cellRoot.isUltraCompact ? 7.5 : ((cellRoot.isCompact && cellRoot.hasBadge) ? 8.5 : (cellRoot.height >= 52 ? 10 : 9.5))
+                color: Theme.slotBookedText
+                opacity: 0.90
+                elide: Text.ElideRight
+                maximumLineCount: 1
+            }
         }
     }
 }

@@ -121,18 +121,25 @@ Item {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 140
+                            Layout.preferredWidth: 1
+                            Layout.minimumWidth: 0
+                            Layout.fillHeight: true
+                            implicitHeight: activeCol.implicitHeight + 32
                             radius: 10
                             color: Theme.cardBg
                             border.color: Theme.cardBorder
+                            border.width: 1
+                            clip: true
 
                             ColumnLayout {
+                                id: activeCol
                                 anchors.fill: parent
                                 anchors.margins: 16
                                 spacing: 10
 
                                 RowLayout {
                                     Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
                                     spacing: 14
 
                                     Rectangle {
@@ -140,6 +147,7 @@ Item {
                                         height: 46
                                         radius: 23
                                         color: Theme.sidebarBg
+                                        Layout.alignment: Qt.AlignVCenter
                                         Text {
                                             anchors.centerIn: parent
                                             text: modelData.studentInitials || "H"
@@ -150,12 +158,31 @@ Item {
                                     }
 
                                     ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
                                         spacing: 2
-                                        Text { text: modelData.studentName; font.bold: true; font.pixelSize: 16; color: Theme.textDark }
-                                        Text { text: (modelData.gradeLevel === 0 ? "Khối lớp: Khác" : "Khối lớp " + modelData.gradeLevel) + " · " + (modelData.email || "Email chưa cập nhật"); font.pixelSize: 12; color: Theme.textMuted }
-                                    }
+                                        Layout.alignment: Qt.AlignVCenter
 
-                                    Item { Layout.fillWidth: true }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: modelData.studentName
+                                            font.bold: true
+                                            font.pixelSize: 16
+                                            color: Theme.textDark
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: (modelData.gradeLevel === 0 ? "Khối lớp: Khác" : "Khối lớp " + modelData.gradeLevel) + " · " + (modelData.email || "Email chưa cập nhật")
+                                            font.pixelSize: 12
+                                            color: Theme.textMuted
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
+                                    }
 
                                     Rectangle {
                                         height: 24
@@ -163,6 +190,8 @@ Item {
                                         radius: 4
                                         color: "#f6ffed"
                                         border.color: "#b7eb8f"
+                                        border.width: 1
+                                        Layout.alignment: Qt.AlignVCenter
                                         Text { anchors.centerIn: parent; text: "ĐANG HỌC"; font.bold: true; font.pixelSize: 10; color: "#52c41a" }
                                     }
                                 }
@@ -171,16 +200,49 @@ Item {
 
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Text { text: "📚 Môn: " + modelData.subject + " · ⏰ Lịch: " + modelData.nextLessonSlot; font.pixelSize: 12; font.bold: true; color: Theme.textDark }
-                                    Item { Layout.fillWidth: true }
+                                    Layout.minimumWidth: 0
+                                    spacing: 10
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        spacing: 4
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: "📚 Môn: " + modelData.subject
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                            color: Theme.textDark
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: "⏰ Lịch: " + modelData.nextLessonSlot
+                                            font.pixelSize: 12
+                                            color: Theme.textMuted
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
+                                    }
+
                                     Button {
                                         text: "🏁 Hoàn thành khóa học"
+                                        Layout.alignment: Qt.AlignVCenter
                                         onClicked: {
                                             if (typeof guiBridge !== "undefined") {
                                                 guiBridge.terminateCourse(modelData.bookingId)
                                             }
                                         }
                                     }
+                                }
+
+                                Item {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
                                 }
                             }
                         }
@@ -235,25 +297,34 @@ Item {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: modelData.isReviewed ? 160 : 130
+                            Layout.preferredWidth: 1
+                            Layout.minimumWidth: 0
+                            Layout.fillHeight: true
+                            implicitHeight: cardCol.implicitHeight + 32
                             radius: 10
                             color: Theme.cardBg
                             border.color: Theme.cardBorder
+                            border.width: 1
+                            clip: true
 
                             ColumnLayout {
+                                id: cardCol
                                 anchors.fill: parent
                                 anchors.margins: 16
-                                spacing: 8
+                                spacing: 10
 
+                                // SECTION 1: STUDENT IDENTITY
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    spacing: 14
+                                    Layout.minimumWidth: 0
+                                    spacing: 12
 
                                     Rectangle {
                                         width: 44
                                         height: 44
                                         radius: 22
                                         color: Theme.sidebarBg
+                                        Layout.alignment: Qt.AlignVCenter
                                         Text {
                                             anchors.centerIn: parent
                                             text: modelData.studentInitials || "H"
@@ -264,55 +335,163 @@ Item {
                                     }
 
                                     ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
                                         spacing: 2
-                                        Text { text: modelData.studentName; font.bold: true; font.pixelSize: 15; color: Theme.textDark }
-                                        Text { text: (modelData.gradeLevel === 0 ? "Khối lớp: Khác" : "Khối lớp " + modelData.gradeLevel) + " · " + (modelData.email || "Email chưa cập nhật"); font.pixelSize: 12; color: Theme.textMuted }
-                                    }
+                                        Layout.alignment: Qt.AlignVCenter
 
-                                    Item { Layout.fillWidth: true }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: modelData.studentName
+                                            font.bold: true
+                                            font.pixelSize: 15
+                                            color: Theme.textDark
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: (modelData.gradeLevel === 0 ? "Khối lớp: Khác" : "Khối lớp " + modelData.gradeLevel) + " · " + (modelData.email || "Email chưa cập nhật")
+                                            font.pixelSize: 12
+                                            color: Theme.textMuted
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
+                                    }
 
                                     Rectangle {
                                         height: 24
-                                        implicitWidth: 110
+                                        implicitWidth: 105
                                         radius: 4
                                         color: Theme.bgApp
                                         border.color: Theme.cardBorder
-                                        Text { anchors.centerIn: parent; text: "ĐÃ HOÀN THÀNH"; font.bold: true; font.pixelSize: 10; color: Theme.textDark }
+                                        border.width: 1
+                                        Layout.alignment: Qt.AlignVCenter
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "ĐÃ HOÀN THÀNH"
+                                            font.bold: true
+                                            font.pixelSize: 10
+                                            color: Theme.textDark
+                                        }
                                     }
                                 }
 
-                                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.cardBorder }
-
-                                Text {
-                                    text: "📚 Môn: " + modelData.subject + " · ⏰ Lịch từng học: " + modelData.nextLessonSlot
-                                    font.pixelSize: 12
-                                    font.bold: true
-                                    color: Theme.textDark
-                                }
-
-                                // Review Display if available
+                                // DIVIDER
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    height: 32
-                                    radius: 6
-                                    color: Theme.cMistyRose
-                                    visible: modelData.isReviewed
+                                    height: 1
+                                    color: Theme.cardBorder
+                                }
+
+                                // SECTION 2: COURSE INFORMATION
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    spacing: 5
 
                                     RowLayout {
-                                        anchors.fill: parent
-                                        anchors.leftMargin: 10
-                                        anchors.rightMargin: 10
-                                        spacing: 8
-                                        Text { text: "⭐ " + modelData.ratingScore + " ★"; font.bold: true; font.pixelSize: 11; color: "#d97706" }
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        spacing: 6
+
                                         Text {
-                                            text: "\"" + modelData.comment + "\""
+                                            text: "📚"
+                                            font.pixelSize: 12
+                                            Layout.alignment: Qt.AlignTop
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: modelData.subject || "Khóa học"
+                                            font.bold: true
+                                            font.pixelSize: 12
+                                            color: Theme.textDark
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        spacing: 6
+
+                                        Text {
+                                            text: "⏰"
+                                            font.pixelSize: 12
+                                            Layout.alignment: Qt.AlignTop
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: "Lịch học: " + (modelData.nextLessonSlot || "Chưa cập nhật")
+                                            font.pixelSize: 12
+                                            color: Theme.textDark
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
+                                }
+
+                                // SECTION 3: REVIEW (Only when reviewed)
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    implicitHeight: revCol.implicitHeight + 16
+                                    radius: 6
+                                    color: Theme.cMistyRose
+                                    border.color: "#E8C5C8"
+                                    border.width: 1
+                                    visible: Boolean(modelData.isReviewed)
+
+                                    ColumnLayout {
+                                        id: revCol
+                                        anchors.fill: parent
+                                        anchors.margins: 8
+                                        spacing: 4
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            spacing: 6
+
+                                            Text {
+                                                text: "⭐ " + (modelData.ratingScore || 5) + " ★"
+                                                font.bold: true
+                                                font.pixelSize: 11
+                                                color: "#d97706"
+                                            }
+
+                                            Text {
+                                                text: "Đánh giá từ học viên"
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                                color: Theme.textMuted
+                                            }
+
+                                            Item { Layout.fillWidth: true }
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: modelData.comment ? ("\"" + modelData.comment + "\"") : ""
                                             font.italic: true
                                             font.pixelSize: 11
                                             color: Theme.textDark
-                                            elide: Text.ElideRight
-                                            Layout.fillWidth: true
+                                            wrapMode: Text.WordWrap
                                         }
                                     }
+                                }
+
+                                Item {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
                                 }
                             }
                         }

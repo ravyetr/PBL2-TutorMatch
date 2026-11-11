@@ -15,8 +15,6 @@ void Student::displayProfile() const {
     std::cout << " Tên tài khoản  : " << username << std::endl;
     std::cout << " Địa chỉ Email   : " << email << std::endl;
     std::cout << " Khối lớp        : Lớp " << gradeLevel << std::endl;
-    std::cout << " Môn học mục tiêu: " << preferredSubject << std::endl;
-    std::cout << " Ngân sách tối đa: " << (long long)maxBudget << " VNĐ/buổi" << std::endl;
     std::cout << " Trạng thái TK   : " << (isActive ? "HOẠT ĐỘNG" : "BỊ KHÓA") << std::endl;
     std::cout << "========================================================\n" << std::endl;
 }
@@ -30,8 +28,7 @@ void Tutor::addReviewRating(int newRatingScore) {
 
 void Tutor::displayProfile() const {
     std::cout << "\n========================================================" << std::endl;
-    std::cout << " [HỒ SƠ GIA SƯ] Mã ID: " << id << " | " << fullName
-              << " (" << (isVerified ? "ĐÃ XÁC MINH" : "CHƯA XÁC MINH") << ")" << std::endl;
+    std::cout << " [HỒ SƠ GIA SƯ] Mã ID: " << id << " | " << fullName << std::endl;
     std::cout << "========================================================" << std::endl;
     std::cout << " Tên tài khoản  : " << username << std::endl;
     std::cout << " Địa chỉ Email   : " << email << std::endl;

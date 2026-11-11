@@ -138,16 +138,16 @@ std::vector<std::string> DateUtils::generateSessionDates(const std::string& star
 std::vector<DateUtils::ScheduledSession> DateUtils::generateMultiSlotSessions(
     const std::string& startDate,
     int weeksCount,
-    const std::vector<std::pair<int, int>>& slots) {
+    const std::vector<std::pair<int, int>>& weeklySlots) {
     std::vector<ScheduledSession> result;
-    if (weeksCount <= 0 || !isValidDateString(startDate) || slots.empty()) {
+    if (weeksCount <= 0 || !isValidDateString(startDate) || weeklySlots.empty()) {
         return result;
     }
 
     int startDow = dayOfWeek(startDate);
     if (startDow < 0) return result;
 
-    for (const auto& slotPair : slots) {
+    for (const auto& slotPair : weeklySlots) {
         int w = slotPair.first;
         int s = slotPair.second;
         if (w < 0 || w > 6 || s < 0 || s > 7) continue;

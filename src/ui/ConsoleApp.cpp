@@ -447,7 +447,7 @@ void ConsoleApp::handleRegister() {
             ok = authService->registerTutor(uName, pPass, fullName, email, subj, rate, bio, errMsg);
         } else if (dbEngine) {
             int newId = dbEngine->getNextUserId();
-            Tutor tutor(newId, uName, pPass, email, fullName, bio, subj, rate, 5.0, 0, false, 0.0, 0x00FF00FF00FF00FFULL, true);
+            Tutor tutor(newId, uName, pPass, email, fullName, bio, subj, rate, 5.0, 0, 0.0, 0x00FF00FF00FF00FFULL, true);
             ok = dbEngine->saveUser(tutor);
         }
 
@@ -489,7 +489,7 @@ void ConsoleApp::handleBenchmarkStatus() {
 
     auto tutors = userService ? userService->getAllTutors()
                               : (dbEngine ? dbEngine->getAllTutors() : std::vector<std::shared_ptr<Tutor>>{});
-    std::cout << " [Số lượng Gia sư hoạt động] : " << tutors.size() << " gia sư đã/chưa xác minh\n";
+    std::cout << " [Số lượng Gia sư hoạt động] : " << tutors.size() << " gia sư khả dụng\n";
 
     printDivider();
     std::cout << "Đang kiểm thử Truy vấn khoảng Cây AVL (100.000 VNĐ đến 200.000 VNĐ)...\n";
@@ -583,15 +583,13 @@ void ConsoleApp::handleStudentProfileUpdate() {
 
     while (true) {
         printHeader("CHỌN THÔNG TIN CẦN CHỈNH SỬA");
-        std::cout << " 1. Môn học mục tiêu [" << studentPtr->getPreferredSubject() << "]\n";
-        std::cout << " 2. Ngân sách tối đa [" << (long long)studentPtr->getMaxBudget() << " VNĐ/buổi]\n";
-        std::cout << " 3. Khối lớp [Lớp " << studentPtr->getGradeLevel() << "]\n";
-        std::cout << " 4. Địa chỉ Email [" << studentPtr->getEmail() << "]\n";
-        std::cout << " 5. Họ và tên [" << studentPtr->getFullName() << "]\n";
+        std::cout << " 1. Khối lớp [Lớp " << studentPtr->getGradeLevel() << "]\n";
+        std::cout << " 2. Địa chỉ Email [" << studentPtr->getEmail() << "]\n";
+        std::cout << " 3. Họ và tên [" << studentPtr->getFullName() << "]\n";
         std::cout << " 0. Quay lại Bảng điều khiển\n";
         printDivider();
 
-        int fieldChoice = getValidIntChoice(0, 5, "Chọn mục cần sửa [0-5]: ");
+        int fieldChoice = getValidIntChoice(0, 3, "Chọn mục cần sửa [0-3]: ");
         if (fieldChoice == 0) {
             break;
         }
@@ -599,30 +597,12 @@ void ConsoleApp::handleStudentProfileUpdate() {
         bool updated = false;
         switch (fieldChoice) {
             case 1: {
-                std::string newSubj = readStringInput("Nhập Môn học mục tiêu mới [" + studentPtr->getPreferredSubject() + "]: ");
-                if (!newSubj.empty()) {
-                    studentPtr->setPreferredSubject(newSubj);
-                    updated = true;
-                }
-                break;
-            }
-            case 2: {
-                double newBudget = readDoubleInput("Nhập Ngân sách tối đa mới (VNĐ/buổi) [" + std::to_string((long long)studentPtr->getMaxBudget()) + "]: ");
-                if (newBudget > 0) {
-                    studentPtr->setMaxBudget(newBudget);
-                    updated = true;
-                } else {
-                    printError("Ngân sách tối đa phải lớn hơn 0!");
-                }
-                break;
-            }
-            case 3: {
                 int newGrade = getValidIntChoice(1, 12, "Nhập Khối lớp mới (1-12) [" + std::to_string(studentPtr->getGradeLevel()) + "]: ");
                 studentPtr->setGradeLevel(newGrade);
                 updated = true;
                 break;
             }
-            case 4: {
+            case 2: {
                 while (true) {
                     std::string newEmail = readStringInput("Nhập Địa chỉ Email mới (Ví dụ: ten@domain.com, hoặc 0 để hủy): ");
                     if (newEmail == "0") {
@@ -638,7 +618,7 @@ void ConsoleApp::handleStudentProfileUpdate() {
                 }
                 break;
             }
-            case 5: {
+            case 3: {
                 std::string newName = readStringInput("Nhập Họ và tên mới [" + studentPtr->getFullName() + "]: ");
                 if (!newName.empty()) {
                     studentPtr->setFullName(newName);
@@ -731,7 +711,6 @@ void ConsoleApp::handleTutorDiscoveryAVL() {
                 std::cout << " Chuyên môn giảng dạy: " << t->getSubjectSpecialty() << "\n";
                 std::cout << " Mức học phí        : " << (long long)t->getHourlyRate() << " VNĐ/buổi\n";
                 std::cout << " Điểm đánh giá      : " << std::fixed << std::setprecision(1) << t->getRating() << " * (" << reviews.size() << " lượt đánh giá)\n";
-                std::cout << " Trạng thái xác minh: " << (t->getIsVerified() ? "ĐÃ XÁC MINH (CÓ)" : "CHƯA XÁC MINH (KHÔNG)") << "\n";
                 std::cout << " Giới thiệu bản thân: " << t->getBio() << "\n";
                 printDivider();
 
@@ -763,7 +742,7 @@ void ConsoleApp::handleSmartMatchingMaxHeap() {
                                           : matchingEngine.findTopMatches(*studentPtr, tutors, 3);
 
         printHeader("HỆ THỐNG GỢI Ý GIA SƯ THÔNG MINH");
-        std::cout << COLOR_YELLOW << " Trọng số đa tiêu chí: Môn học (30%), Giá học phí (20%), Lịch dạy (25%), Đánh giá (15%), Xác minh (10%)\n" << COLOR_RESET;
+        std::cout << COLOR_YELLOW << " Trọng số đa tiêu chí: Lịch học (35%), Học phí (25%), Đánh giá (15%), Kinh nghiệm (15%), Hồ sơ (10%)\n" << COLOR_RESET;
         printDivider();
 
         int rank = 1;
@@ -850,14 +829,14 @@ void ConsoleApp::handleBookLessonScheduleGuard() {
 
     if (bookingService) {
         booked = bookingService->bookCourse(studentPtr->getId(), tutor->getId(),
-                                            studentPtr->getPreferredSubject(), day, slot,
+                                            tutor->getSubjectSpecialty(), day, slot,
                                             startDate, weeksCount, ack, outMsg, &newCourseId);
     } else if (dbEngine) {
         auto cbRepo = dbEngine->getCourseBookingRepository();
         if (cbRepo) {
             auto bService = std::make_shared<BookingService>(dbEngine->getUserRepository(), dbEngine->getReviewRepository(), cbRepo);
             booked = bService->bookCourse(studentPtr->getId(), tutor->getId(),
-                                          studentPtr->getPreferredSubject(), day, slot,
+                                          tutor->getSubjectSpecialty(), day, slot,
                                           startDate, weeksCount, ack, outMsg, &newCourseId);
         }
     }
@@ -1385,7 +1364,6 @@ void ConsoleApp::handleAdminSystemMetrics() {
         int totalBookingsCount = 0;
         int completedCount = 0;
         int activeMatches = 0;
-        int pendingVerification = 0;
 
         if (adminService) {
             auto m = adminService->calculateMetrics();
@@ -1394,7 +1372,6 @@ void ConsoleApp::handleAdminSystemMetrics() {
             totalBookingsCount = m.totalBookings;
             completedCount = m.completedBookings;
             activeMatches = m.activeMatches;
-            pendingVerification = m.pendingVerification;
         } else {
             auto tutors = dbEngine ? dbEngine->getAllTutors() : std::vector<std::shared_ptr<Tutor>>{};
             auto students = dbEngine ? dbEngine->getAllStudents() : std::vector<std::shared_ptr<Student>>{};
@@ -1409,9 +1386,6 @@ void ConsoleApp::handleAdminSystemMetrics() {
                     activeMatches++;
                 }
             }
-            for (const auto& t : tutors) {
-                if (t && !t->getIsVerified()) pendingVerification++;
-            }
         }
 
         printHeader("BẢNG THỐNG KÊ HOẠT ĐỘNG HỆ THỐNG");
@@ -1420,7 +1394,7 @@ void ConsoleApp::handleAdminSystemMetrics() {
         std::cout << " +-----------------------------------+-----------------------------------+\n";
         std::cout << " |  Tổng yêu cầu đăng ký: " << padRightUTF8(std::to_string(totalBookingsCount), 11) << "|  Khóa học đang diễn ra: " << padRightUTF8(std::to_string(activeMatches), 10) << "|\n";
         std::cout << " +-----------------------------------+-----------------------------------+\n";
-        std::cout << " |  Khóa học đã hoàn thành: " << padRightUTF8(std::to_string(completedCount), 9) << "|  Gia sư chờ xác minh: " << padRightUTF8(std::to_string(pendingVerification), 12) << "|\n";
+        std::cout << " |  Khóa học đã hoàn thành: " << padRightUTF8(std::to_string(completedCount), 9) << "|  Hệ thống vận hành:   " << padRightUTF8("ỔN ĐỊNH", 12) << "|\n";
         std::cout << " +-----------------------------------+-----------------------------------+\n";
 
         printDivider();
@@ -1435,65 +1409,35 @@ void ConsoleApp::handleAdminUserManagement() {
     while (true) {
         auto users = adminService ? adminService->getAllUsers()
                                   : (userService ? userService->getAllUsers() : (dbEngine ? dbEngine->getAllUsers() : std::vector<std::shared_ptr<User>>{}));
-        printHeader("QUẢN LÝ NGƯỜI DÙNG & HÀNG ĐỢI XÁC MINH");
+        printHeader("QUẢN LÝ TÀI KHOẢN NGƯỜI DÙNG");
 
-        std::cout << "+----+----------------------+-------------------+-------------------+------------+-------------------+\n";
-        std::cout << "| ID | Họ và Tên            | Vai trò           | Chuyên môn/Môn    | Xác minh   | Trạng thái        |\n";
-        std::cout << "+----+----------------------+-------------------+-------------------+------------+-------------------+\n";
+        std::cout << "+----+----------------------+-------------------+-----------------------------+-------------------+\n";
+        std::cout << "| ID | Họ và Tên            | Vai trò           | Chuyên môn/Khối lớp         | Trạng thái        |\n";
+        std::cout << "+----+----------------------+-------------------+-----------------------------+-------------------+\n";
         for (const auto& u : users) {
             std::string subj = "N/A";
-            std::string ver = "N/A";
             if (u->getRole() == UserRole::TUTOR) {
                 auto t = std::static_pointer_cast<Tutor>(u);
                 subj = t->getSubjectSpecialty();
-                ver = t->getIsVerified() ? "ĐÃ XÁC MINH" : "CHƯA XÁC MINH";
             } else if (u->getRole() == UserRole::STUDENT) {
                 auto s = std::static_pointer_cast<Student>(u);
-                subj = s->getPreferredSubject();
+                subj = "Lớp " + std::to_string(s->getGradeLevel());
             }
 
             std::cout << "| " << padRightUTF8(std::to_string(u->getId()), 2)
                       << " | " << padRightUTF8(u->getFullName(), 20)
                       << " | " << padRightUTF8(u->getRoleString(), 17)
-                      << " | " << padRightUTF8(subj, 17)
-                      << " | " << padCenterUTF8(ver, 10)
+                      << " | " << padRightUTF8(subj, 27)
                       << " | " << padCenterUTF8(u->getIsActive() ? "HOẠT ĐỘNG" : "BỊ KHÓA", 17) << " |\n";
         }
-        std::cout << "+----+----------------------+-------------------+-------------------+------------+-------------------+\n";
+        std::cout << "+----+----------------------+-------------------+-----------------------------+-------------------+\n";
 
-        std::cout << "\nThao tác Quản trị viên:\n 1. Xác minh tài khoản Gia sư\n 2. Khóa tài khoản Người dùng\n 3. Mở khóa tài khoản Người dùng\n 4. Xem Chi tiết Hồ sơ & Lịch sử Đánh giá / Phản hồi\n 0. Quay lại Bảng điều khiển\n";
+        std::cout << "\nThao tác Quản trị viên:\n 1. Khóa tài khoản Người dùng\n 2. Mở khóa tài khoản Người dùng\n 3. Xem Chi tiết Hồ sơ & Lịch sử Đánh giá / Phản hồi\n 0. Quay lại Bảng điều khiển\n";
         printDivider();
-        int act = getValidIntChoice(0, 4, "Chọn thao tác [0-4]: ");
+        int act = getValidIntChoice(0, 3, "Chọn thao tác [0-3]: ");
         if (act == 0) break;
 
         if (act == 1) {
-            int uId = readIntInput("Nhập Mã ID Gia sư muốn Xác minh: ");
-            std::string msg;
-            bool ok = false;
-            if (adminService) {
-                ok = adminService->verifyTutor(uId, true, msg);
-            } else if (userService) {
-                auto u = userService->getUserById(uId);
-                if (u && u->getRole() == UserRole::TUTOR) {
-                    auto t = std::static_pointer_cast<Tutor>(u);
-                    t->setIsVerified(true);
-                    ok = userService->updateUser(*t);
-                }
-            } else if (dbEngine) {
-                auto u = dbEngine->findUserById(uId);
-                if (u && u->getRole() == UserRole::TUTOR) {
-                    auto t = std::static_pointer_cast<Tutor>(u);
-                    t->setIsVerified(true);
-                    ok = dbEngine->updateUser(*t);
-                }
-            }
-
-            if (ok) {
-                printSuccess("Gia sư đã được XÁC MINH thành công!");
-            } else {
-                printError(msg.empty() ? "Mã ID Gia sư không hợp lệ!" : msg);
-            }
-        } else if (act == 2) {
             int uId = readIntInput("Nhập Mã ID Người dùng muốn Khóa: ");
             std::string msg;
             bool ok = false;
@@ -1518,7 +1462,7 @@ void ConsoleApp::handleAdminUserManagement() {
             } else {
                 printError(msg.empty() ? "Mã ID Người dùng không hợp lệ!" : msg);
             }
-        } else if (act == 3) {
+        } else if (act == 2) {
             int uId = readIntInput("Nhập Mã ID Người dùng muốn Mở khóa: ");
             std::string msg;
             bool ok = false;
@@ -1543,7 +1487,7 @@ void ConsoleApp::handleAdminUserManagement() {
             } else {
                 printError(msg.empty() ? "Mã ID Người dùng không hợp lệ!" : msg);
             }
-        } else if (act == 4) {
+        } else if (act == 3) {
             int targetId = readIntInput("Nhập Mã ID Người dùng cần tra cứu (hoặc 0 để quay lại): ");
             if (targetId == 0) continue;
 
@@ -1570,7 +1514,6 @@ void ConsoleApp::handleAdminUserManagement() {
                 std::cout << " Địa chỉ Email          : " << tutorPtr->getEmail() << "\n";
                 std::cout << " Chuyên môn             : " << tutorPtr->getSubjectSpecialty() << "\n";
                 std::cout << " Mức học phí            : " << (long long)tutorPtr->getHourlyRate() << " VNĐ/buổi\n";
-                std::cout << " Trạng thái xác minh    : " << (tutorPtr->getIsVerified() ? "ĐÃ XÁC MINH" : "CHƯA XÁC MINH") << "\n";
                 std::cout << " Trạng thái tài khoản   : " << (tutorPtr->getIsActive() ? "HOẠT ĐỘNG" : "BỊ KHÓA") << "\n";
                 std::cout << " Tổng số buổi đã dạy    : " << completedCount << " buổi hoàn thành\n";
                 printDivider();
@@ -1641,8 +1584,6 @@ void ConsoleApp::handleAdminUserManagement() {
                 std::cout << " Họ và tên              : " << studentPtr->getFullName() << "\n";
                 std::cout << " Địa chỉ Email          : " << studentPtr->getEmail() << "\n";
                 std::cout << " Khối lớp               : Lớp " << studentPtr->getGradeLevel() << "\n";
-                std::cout << " Môn học mục tiêu       : " << studentPtr->getPreferredSubject() << "\n";
-                std::cout << " Ngân sách tối đa       : " << (long long)studentPtr->getMaxBudget() << " VNĐ/buổi\n";
                 std::cout << " Trạng thái tài khoản   : " << (studentPtr->getIsActive() ? "HOẠT ĐỘNG" : "BỊ KHÓA") << "\n";
                 printDivider();
 

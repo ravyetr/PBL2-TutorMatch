@@ -64,6 +64,9 @@ bool GUIBridge::initialize(std::shared_ptr<AuthService> aService,
     reviewService = std::move(rService);
     matchingService = std::move(mService);
     adminService = std::move(admService);
+    if (matchingService && bookingService) {
+        matchingService->setCourseBookingRepository(bookingService->getCourseBookingRepository());
+    }
     return true;
 }
 
@@ -76,7 +79,7 @@ bool GUIBridge::initialize(std::shared_ptr<IUserRepository> uRepo,
     auto uService = std::make_shared<UserService>(uRepo);
     auto bService = std::make_shared<BookingService>(uRepo, rRepo, cbRepo);
     auto rService = std::make_shared<ReviewService>(rRepo, uRepo, cbRepo);
-    auto mService = std::make_shared<MatchingService>(uRepo);
+    auto mService = std::make_shared<MatchingService>(uRepo, cbRepo);
     auto admService = std::make_shared<AdminService>(uRepo, rRepo, bService);
 
     return initialize(aService, uService, bService, rService, mService, admService);
@@ -236,8 +239,6 @@ QVariantMap GUIBridge::getCurrentStudentProfile() const {
         map["username"] = QString::fromStdString(student->getUsername());
         map["email"] = QString::fromStdString(student->getEmail());
         map["gradeLevel"] = student->getGradeLevel();
-        map["preferredSubject"] = QString::fromStdString(student->getPreferredSubject());
-        map["maxBudget"] = student->getMaxBudget();
         map["isActive"] = student->getIsActive();
         map["statusString"] = student->getIsActive() ? QString::fromUtf8("HOẠT ĐỘNG") : QString::fromUtf8("ĐÃ BỊ KHÓA");
     } else {
@@ -246,8 +247,6 @@ QVariantMap GUIBridge::getCurrentStudentProfile() const {
         map["username"] = "";
         map["email"] = "";
         map["gradeLevel"] = 0;
-        map["preferredSubject"] = "";
-        map["maxBudget"] = 0.0;
         map["isActive"] = false;
         map["statusString"] = QString::fromUtf8("KHÔNG XÁC ĐỊNH");
     }
@@ -264,8 +263,14 @@ bool GUIBridge::updateStudentProfile(const QString& name, const QString& email, 
 
     auto student = std::static_pointer_cast<Student>(u);
     std::string outErr;
-    bool ok = userService->updateStudentProfile(*student, name.trimmed().toStdString(), email.trimmed().toStdString(),
+    bool ok = false;
+    if (targetSubject.trimmed().isEmpty() && budget <= 0.0) {
+        ok = userService->updateStudentProfile(*student, name.trimmed().toStdString(), email.trimmed().toStdString(),
+                                               grade, outErr);
+    } else {
+        ok = userService->updateStudentProfile(*student, name.trimmed().toStdString(), email.trimmed().toStdString(),
                                                grade, targetSubject.trimmed().toStdString(), budget, outErr);
+    }
     if (ok) {
         statusMessageStr = "Cập nhật hồ sơ học viên thành công!";
         Q_EMIT studentProfileChanged();
@@ -463,7 +468,6 @@ QVariantMap GUIBridge::getCurrentTutorProfile() const {
         map["hourlyRate"] = tutor->getHourlyRate();
         map["rating"] = tutor->getRating();
         map["totalReviews"] = tutor->getTotalReviews();
-        map["isVerified"] = tutor->getIsVerified();
         map["totalEarnings"] = tutor->getTotalEarnings();
         map["isActive"] = tutor->getIsActive();
         map["statusString"] = tutor->getIsActive() ? QString::fromUtf8("HOẠT ĐỘNG") : QString::fromUtf8("ĐÃ BỊ KHÓA");
@@ -634,7 +638,6 @@ QVariantList GUIBridge::qmlGetAllTutors() {
         map["hourlyRate"] = t->getHourlyRate();
         map["rating"] = t->getRating();
         map["totalReviews"] = t->getTotalReviews();
-        map["isVerified"] = t->getIsVerified();
         list.append(map);
     }
     return list;
@@ -660,7 +663,6 @@ QVariantList GUIBridge::searchAndFilterTutors(const QString& keyword, const QStr
         map["hourlyRate"] = t->getHourlyRate();
         map["rating"] = t->getRating();
         map["totalReviews"] = t->getTotalReviews();
-        map["isVerified"] = t->getIsVerified();
         map["bio"] = QString::fromStdString(t->getBio());
 
         list.append(map);
@@ -684,8 +686,9 @@ QVariantMap GUIBridge::getTutorDetail(int tutorId) {
     result["hourlyRate"] = tutor->getHourlyRate();
     result["rating"] = tutor->getRating();
     result["totalReviews"] = tutor->getTotalReviews();
-    result["isVerified"] = tutor->getIsVerified();
     result["isActive"] = tutor->getIsActive();
+    result["scheduleBitmask"] = QString::number(tutor->getScheduleBitmask());
+    result["availableSlots"] = getTutorAvailableSlots(tutorId);
 
     QVariantList reviewList;
     auto reviews = bookingService->getTutorReviews(tutorId);
@@ -707,7 +710,7 @@ QVariantList GUIBridge::getTutorAvailableSlots(int tutorId) {
     if (!userService) return result;
 
     auto t = userService->getTutorById(tutorId);
-    if (!t || !t->getIsActive()) return result;
+    if (!t) return result;
 
     uint64_t mask = t->getScheduleBitmask();
     for (int day = 0; day < ScheduleGuard::DAYS_PER_WEEK; ++day) {
@@ -819,7 +822,6 @@ QVariantList GUIBridge::qmlGetSmartMatches(int topK) {
         map["hourlyRate"] = m.tutor->getHourlyRate();
         map["rating"] = m.tutor->getRating();
         map["totalReviews"] = m.tutor->getTotalReviews();
-        map["isVerified"] = m.tutor->getIsVerified();
         map["bio"] = QString::fromStdString(m.tutor->getBio());
         map["initials"] = (!m.tutor->getFullName().empty()) ? QString::fromStdString(m.tutor->getFullName()).left(1).toUpper() : QString("G");
         map["compositeScore"] = (int)m.compositeScore;
@@ -827,9 +829,116 @@ QVariantList GUIBridge::qmlGetSmartMatches(int topK) {
         map["priceScore"] = (int)m.priceScore;
         map["scheduleScore"] = (int)m.scheduleScore;
         map["ratingScore"] = (int)m.ratingScore;
+        map["experienceScore"] = (int)m.experienceScore;
+        map["credibilityScore"] = (int)m.credibilityScore;
 
-        int overlap = ScheduleGuard::countMatchingSlots(m.tutor->getScheduleBitmask(), student->getScheduleBitmask());
+        int overlap = (m.matchedSlotCount > 0) ? m.matchedSlotCount : ScheduleGuard::countMatchingSlots(m.tutor->getScheduleBitmask(), student->getScheduleBitmask());
         map["scheduleOverlapCount"] = overlap;
+        map["matchedSlotCount"] = m.matchedSlotCount;
+        map["requestedSlotCount"] = m.requestedSlotCount;
+
+        QStringList expList;
+        for (const auto& exp : m.explanations) {
+            expList.append(QString::fromStdString(exp));
+        }
+        map["explanations"] = expList;
+
+        list.append(map);
+    }
+    return list;
+}
+
+QVariantList GUIBridge::qmlSearchSmartMatches(const QVariantMap& criteriaMap, int topK) {
+    QVariantList list;
+    if (!matchingService) return list;
+
+    SmartMatchCriteria criteria;
+    criteria.subject = criteriaMap.value("subject").toString().trimmed().toStdString();
+    criteria.gradeLevel = criteriaMap.value("gradeLevel", 10).toInt();
+    criteria.maxBudget = criteriaMap.value("maxBudget", 200000.0).toDouble();
+
+    QVariant maskVar = criteriaMap.value("preferredScheduleMask");
+    if (maskVar.canConvert<double>()) {
+        criteria.preferredScheduleMask = static_cast<uint64_t>(maskVar.toULongLong());
+    } else {
+        bool ok = false;
+        uint64_t maskParsed = maskVar.toString().toULongLong(&ok);
+        criteria.preferredScheduleMask = ok ? maskParsed : 0ULL;
+    }
+
+    QVariant slotsVar = criteriaMap.value("selectedSlots");
+    if (slotsVar.canConvert<QVariantList>()) {
+        QVariantList sList = slotsVar.toList();
+        for (const auto& item : sList) {
+            QVariantMap sm = item.toMap();
+            int d = sm.value("day", -1).toInt();
+            int s = sm.value("slot", -1).toInt();
+            if (d >= 0 && d <= 6 && s >= 0 && s <= 7) {
+                criteria.preferredScheduleMask |= (1ULL << (d * 8 + s));
+            }
+        }
+    }
+
+    QString startStr = criteriaMap.value("startDate").toString().trimmed();
+    if (startStr.isEmpty()) {
+        criteria.startDate = DateUtils::getCurrentDateString();
+    } else {
+        criteria.startDate = startStr.toStdString();
+    }
+
+    criteria.weeksCount = criteriaMap.value("weeksCount", 4).toInt();
+    if (criteria.weeksCount != 4 && criteria.weeksCount != 8 && criteria.weeksCount != 12) {
+        criteria.weeksCount = 4;
+    }
+
+    criteria.strictSchedule = criteriaMap.value("strictSchedule", true).toBool();
+    criteria.minRating = criteriaMap.value("minRating", 0.0).toDouble();
+
+    auto matches = matchingService->findMatchesWithCriteria(criteria, topK);
+    int rank = 1;
+
+    for (const auto& m : matches) {
+        if (!m.tutor) continue;
+        QVariantMap map;
+        map["rank"] = rank++;
+        map["id"] = m.tutor->getId();
+        map["tutorId"] = m.tutor->getId();
+        map["fullName"] = QString::fromStdString(m.tutor->getFullName());
+        map["tutorName"] = QString::fromStdString(m.tutor->getFullName());
+        map["subject"] = QString::fromStdString(m.tutor->getSubjectSpecialty());
+        map["hourlyRate"] = m.tutor->getHourlyRate();
+        map["rating"] = m.tutor->getRating();
+        map["totalReviews"] = m.tutor->getTotalReviews();
+        map["bio"] = QString::fromStdString(m.tutor->getBio());
+        map["initials"] = (!m.tutor->getFullName().empty()) ? QString::fromStdString(m.tutor->getFullName()).left(1).toUpper() : QString("G");
+
+        // 100-point explainable scores
+        map["compositeScore"] = static_cast<int>(std::round(m.compositeScore));
+        map["scheduleScore"] = static_cast<int>(std::round(m.scheduleScore));
+        map["priceScore"] = static_cast<int>(std::round(m.priceScore));
+        map["ratingScore"] = static_cast<int>(std::round(m.ratingScore));
+        map["experienceScore"] = static_cast<int>(std::round(m.experienceScore));
+        map["credibilityScore"] = static_cast<int>(std::round(m.credibilityScore));
+
+        map["matchedSlotCount"] = m.matchedSlotCount;
+        map["requestedSlotCount"] = m.requestedSlotCount;
+        map["scheduleOverlapCount"] = m.matchedSlotCount;
+
+        QVariantList matchedSlotsList;
+        for (const auto& p : m.matchedSlots) {
+            QVariantMap slotMap;
+            slotMap["day"] = p.first;
+            slotMap["slot"] = p.second;
+            slotMap["label"] = QString::fromUtf8(ScheduleGuard::formatSlotSingle(p.first, p.second).c_str());
+            matchedSlotsList.append(slotMap);
+        }
+        map["matchedSlots"] = matchedSlotsList;
+
+        QStringList expList;
+        for (const auto& exp : m.explanations) {
+            expList.append(QString::fromStdString(exp));
+        }
+        map["explanations"] = expList;
 
         list.append(map);
     }
@@ -857,7 +966,14 @@ bool GUIBridge::bookLesson(int tutorId, int day, int slot, std::string& outMsg) 
     std::string startDate = DateUtils::addDays(today, daysUntil);
     auto student = std::static_pointer_cast<Student>(u);
     int newCourseId = 0;
-    return bookingService->bookCourse(student->getId(), tutorId, student->getPreferredSubject(), day, slot, startDate, 4, outMsg, &newCourseId);
+    std::string tutorSubj = "";
+    if (userService) {
+        auto tutorUser = userService->getUserById(tutorId);
+        if (tutorUser && tutorUser->getRole() == UserRole::TUTOR) {
+            tutorSubj = std::static_pointer_cast<Tutor>(tutorUser)->getSubjectSpecialty();
+        }
+    }
+    return bookingService->bookCourse(student->getId(), tutorId, tutorSubj, day, slot, startDate, 4, outMsg, &newCourseId);
 }
 
 #ifdef QT_CORE_LIB
@@ -1379,7 +1495,6 @@ QVariantMap GUIBridge::qmlGetTutorOverview() {
     map["username"] = QString::fromStdString(tutor->getUsername());
     map["email"] = QString::fromStdString(tutor->getEmail());
     map["bio"] = QString::fromStdString(tutor->getBio());
-    map["isVerified"] = tutor->getIsVerified();
 
     return map;
 }
@@ -1701,11 +1816,6 @@ std::vector<std::shared_ptr<User>> GUIBridge::getAllUsers() {
     return adminService->getAllUsers();
 }
 
-bool GUIBridge::verifyTutorAccount(int tutorId, std::string& outMsg) {
-    if (!adminService) return false;
-    return adminService->verifyTutor(tutorId, true, outMsg);
-}
-
 bool GUIBridge::toggleUserActiveStatus(int userId, std::string& outMsg) {
     if (!adminService) return false;
     return adminService->toggleUserLock(userId, outMsg);
@@ -1728,13 +1838,6 @@ QVariantList GUIBridge::qmlGetAllUsers() {
         map["role"] = QString::fromStdString(u->getRoleString());
         map["isActive"] = u->getIsActive();
 
-        QString ver = "N/A";
-        if (u->getRole() == UserRole::TUTOR) {
-            auto t = std::static_pointer_cast<Tutor>(u);
-            ver = t->getIsVerified() ? "CÓ" : "KHÔNG";
-        }
-        map["isVerified"] = ver;
-
         list.append(map);
     }
     return list;
@@ -1748,7 +1851,6 @@ QVariantMap GUIBridge::qmlGetAdminMetrics() {
     map["totalBookings"] = am.totalBookings;
     map["completedBookings"] = am.completedBookings;
     map["activeMatches"] = am.activeMatches;
-    map["pendingVerification"] = am.pendingVerification;
     return map;
 }
 
@@ -1759,7 +1861,7 @@ QVariantMap GUIBridge::qmlGetAdminPlatformStats() {
     map["tutorCount"] = am.totalTutors;
     map["activeMatches"] = am.activeMatches;
     map["completedMatches"] = am.completedBookings;
-    map["pendingVerification"] = am.pendingVerification;
+    map["completedBookings"] = am.completedBookings;
     map["totalBookings"] = am.totalBookings;
     return map;
 }
@@ -1784,8 +1886,6 @@ QVariantList GUIBridge::qmlGetAdminUsers(const QString& filter, const QString& s
         map["isLocked"] = !u->getIsActive();
         map["statusText"] = u->getIsActive() ? QString::fromUtf8("HOẠT ĐỘNG") : QString::fromUtf8("BỊ KHÓA");
 
-        QString ver = "N/A";
-        bool isVerifiedBool = false;
         QString subj = "";
         double rate = 0.0;
         double rating = 0.0;
@@ -1793,28 +1893,20 @@ QVariantList GUIBridge::qmlGetAdminUsers(const QString& filter, const QString& s
 
         if (u->getRole() == UserRole::TUTOR) {
             auto t = std::static_pointer_cast<Tutor>(u);
-            isVerifiedBool = t->getIsVerified();
-            ver = t->getIsVerified() ? QString::fromUtf8("ĐÃ XÁC MINH") : QString::fromUtf8("CHƯA XÁC MINH");
             subj = QString::fromStdString(t->getSubjectSpecialty());
             rate = t->getHourlyRate();
             rating = t->getRating();
             totalRevs = t->getTotalReviews();
         } else if (u->getRole() == UserRole::STUDENT) {
             auto s = std::static_pointer_cast<Student>(u);
-            subj = QString::fromStdString(s->getPreferredSubject());
-            rate = s->getMaxBudget();
-            ver = QString::fromUtf8("Lớp %1").arg(s->getGradeLevel());
-            isVerifiedBool = false;
+            subj = QString::fromUtf8("Lớp %1").arg(s->getGradeLevel());
+            rate = 0.0;
         } else if (u->getRole() == UserRole::ADMIN) {
-            ver = QString::fromUtf8("Quản trị viên");
-            isVerifiedBool = true;
+            subj = QString::fromUtf8("Quản trị hệ thống");
         }
 
         map["subject"] = subj;
         map["subjectOrField"] = subj;
-        map["isVerified"] = isVerifiedBool;
-        map["isVerifiedBool"] = isVerifiedBool;
-        map["verificationStatus"] = ver;
         map["hourlyRate"] = rate;
         map["hourlyRateOrBudget"] = rate;
         map["rating"] = rating;
@@ -1877,21 +1969,11 @@ QVariantMap GUIBridge::qmlGetUserDetailsForAdmin(int userId) {
         profile["gradeLevel"] = s->getGradeLevel();
         profile["gradeDisplay"] = QString::number(s->getGradeLevel());
         profile["gradeText"] = QString::fromUtf8("Lớp %1").arg(s->getGradeLevel());
-        profile["preferredSubject"] = QString::fromStdString(s->getPreferredSubject());
-        profile["subject"] = QString::fromStdString(s->getPreferredSubject());
-        profile["maxBudget"] = s->getMaxBudget();
-        profile["isVerified"] = false;
-        profile["verifyStatusText"] = QString::fromUtf8("Học viên");
         userMask = s->getScheduleBitmask();
 
         result["gradeLevel"] = s->getGradeLevel();
         result["gradeDisplay"] = QString::number(s->getGradeLevel());
         result["gradeText"] = QString::fromUtf8("Lớp %1").arg(s->getGradeLevel());
-        result["preferredSubject"] = QString::fromStdString(s->getPreferredSubject());
-        result["subject"] = QString::fromStdString(s->getPreferredSubject());
-        result["maxBudget"] = s->getMaxBudget();
-        result["isVerified"] = false;
-        result["verifyStatusText"] = QString::fromUtf8("Học viên");
     } else if (u->getRole() == UserRole::TUTOR) {
         auto t = std::static_pointer_cast<Tutor>(u);
         profile["bio"] = QString::fromStdString(t->getBio());
@@ -1901,8 +1983,6 @@ QVariantMap GUIBridge::qmlGetUserDetailsForAdmin(int userId) {
         profile["rating"] = t->getRating();
         profile["ratingFormatted"] = QString::number(t->getRating(), 'f', 1);
         profile["totalReviews"] = t->getTotalReviews();
-        profile["isVerified"] = t->getIsVerified();
-        profile["verifyStatusText"] = t->getIsVerified() ? QString::fromUtf8("ĐÃ XÁC MINH") : QString::fromUtf8("CHƯA XÁC MINH");
         profile["totalEarnings"] = t->getTotalEarnings();
         userMask = t->getScheduleBitmask();
 
@@ -1913,18 +1993,12 @@ QVariantMap GUIBridge::qmlGetUserDetailsForAdmin(int userId) {
         result["rating"] = t->getRating();
         result["ratingFormatted"] = QString::number(t->getRating(), 'f', 1);
         result["totalReviews"] = t->getTotalReviews();
-        result["isVerified"] = t->getIsVerified();
-        result["verifyStatusText"] = profile["verifyStatusText"];
         result["totalEarnings"] = t->getTotalEarnings();
     } else if (u->getRole() == UserRole::ADMIN) {
         auto a = std::static_pointer_cast<Admin>(u);
         profile["permissionLevel"] = a->getPermissionLevel();
-        profile["isVerified"] = true;
-        profile["verifyStatusText"] = QString::fromUtf8("Quản trị hệ thống");
 
         result["permissionLevel"] = a->getPermissionLevel();
-        result["isVerified"] = true;
-        result["verifyStatusText"] = QString::fromUtf8("Quản trị hệ thống");
     }
 
     result["profile"] = profile;
@@ -2082,16 +2156,6 @@ QVariantMap GUIBridge::qmlGetUserDetailsForAdmin(int userId) {
     return result;
 }
 
-bool GUIBridge::qmlVerifyTutor(int tutorId, bool approve) {
-    if (!adminService) return false;
-    std::string msg;
-    bool res = adminService->verifyTutor(tutorId, approve, msg);
-    statusMessageStr = msg;
-    Q_EMIT statusMessageChanged();
-    Q_EMIT dataChanged();
-    return res;
-}
-
 bool GUIBridge::qmlToggleUserLock(int userId) {
     if (!adminService) return false;
     std::string msg;
@@ -2141,10 +2205,6 @@ QVariantList GUIBridge::qmlGetRecentConnections(int limit) {
         count++;
     }
     return list;
-}
-
-QVariantList GUIBridge::qmlGetPendingVerificationTutors() {
-    return qmlGetAdminUsers("PENDING_VERIFICATION", "");
 }
 
 QVariantList GUIBridge::qmlGetAllMatches() {
@@ -2247,10 +2307,6 @@ bool GUIBridge::qmlDeleteReview(int reviewId) {
 
 bool GUIBridge::qmlToggleUserActiveStatus(int userId) {
     return qmlToggleUserLock(userId);
-}
-
-bool GUIBridge::qmlVerifyTutorAccount(int tutorId) {
-    return qmlVerifyTutor(tutorId, true);
 }
 #endif
 

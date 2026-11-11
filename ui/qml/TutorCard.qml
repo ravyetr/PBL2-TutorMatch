@@ -62,22 +62,6 @@ Rectangle {
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
-
-                    // Verification Icon / Badge
-                    Rectangle {
-                        visible: tutorCardRoot.tutorData.isVerified === true
-                        width: 18
-                        height: 18
-                        radius: 9
-                        color: "#52c41a"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "✓"
-                            font.bold: true
-                            font.pixelSize: 11
-                            color: "#ffffff"
-                        }
-                    }
                 }
 
                 // Rating & Reviews Summary

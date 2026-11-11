@@ -1,0 +1,50 @@
+1,admin,admin123,admin@tutormatch.vn,System Administrator,ADMIN,1,9
+2,tutor_math,pass123,le.math@tutormatch.vn,ThS. Lê Văn Toàn,TUTOR,1,Chuyên gia luyện thi Đại học môn Toán với 10 năm kinh nghiệm.,Toán 12 - Luyện thi Đại học,150000,5,2,1,0,71777214294589694
+3,tutor_phys,pass123,tran.phys@tutormatch.vn,TS. Trần Thị Vật Lý,TUTOR,1,Giảng viên ĐHQG  chuyên Toán & Vật lý Nâng cao THPT.,Vật lý 10-12 (Luyện thi THPT),200000,4,1,1,0,281470681808895
+4,tutor_eng,pass123,nguyen.eng@tutormatch.vn,Ms. Nguyễn Anh Văn,TUTOR,1,IELTS 8.5  luyện thi Chuyên & Đại học cấp tốc.,Tiếng Anh / IELTS (6.5 - 8.5),120000,0,0,0,0,72057589742960640
+5,tutor_chem,pass123,pham.chem@tutormatch.vn,Thầy Phạm Hóa Học,TUTOR,1,Dạy kèm Hóa 10-12  Luyện thi HSG Tỉnh.,Hóa học 10-12 (Luyện thi HSG),100000,0,0,1,0,4294967295
+6,student_nam,pass123,nam.student@gmail.com,Nguyễn Văn Nam,STUDENT,1,12,Toán 12,180000,71777214294589695
+7,student_thanh,pass123,thanh.student@gmail.com,Phạm Tuấn Thành,STUDENT,1,11,Toán 11,200000,281470681808895
+8,qt_phuongt92,admin123,admin.support@tutormatch.vn,Trần Hoài Phương,ADMIN,1,5
+9,qt_chaul50,admin123,admin.content@tutormatch.vn,Lê Bảo Châu,ADMIN,1,3
+10,sinh_thng84,pass123,nguyen.bio@tutormatch.vn,Cô Nguyễn Thị Sinh,TUTOR,1,Cử nhân Sư phạm Sinh học 8 năm kinh nghiệm luyện thi THPT.,Sinh học 10-12 (Luyện thi THPT),130000,5,2,1,0,14090792576695610
+11,gv.chuongh97,pass123,hoang.lit@tutormatch.vn,ThS. Hoàng Văn Chương,TUTOR,1,Giáo viên Ngữ văn chuyên rèn kỹ năng làm bài nghị luận đạt điểm cao.,Ngữ văn 10-12 (Luyện thi THPT),110000,4.5,2,1,0,2360342752168504
+12,tinvo.edu,pass123,vo.it@tutormatch.vn,Thầy Võ Minh Tin,TUTOR,1,Kỹ sư phần mềm 5 năm kinh nghiệm dạy lập trình C++ và ôn thi HSG Tin học.,Tin học 10-12 (Lập trình C++),180000,4,2,1,0,65968603939390500
+13,dang.ha92,pass123,dang.math@tutormatch.vn,Cô Đặng Thu Hà,TUTOR,1,Giáo viên Toán THPT 12 năm kinh nghiệm chuyên củng cố nền tảng lớp 10-11.,Toán 10-11 (Củng cố nền tảng),120000,4.5,2,1,0,52549314771203940
+14,ledavid.edu,pass123,david.eng@tutormatch.vn,Mr. David Lê,TUTOR,1,IELTS 8.0 chuyên luyện giao tiếp và ôn thi IELTS Speaking Writing.,Tiếng Anh / IELTS (Giao tiếp - Speaking),160000,4,1,1,0,51343626634779830
+15,bui.su17,pass123,bui.hist@tutormatch.vn,Cô Bùi Thị Sử,TUTOR,1,Cử nhân Sư phạm Sử 10 năm kinh nghiệm giúp học viên hệ thống hóa kiến thức bằng sơ đồ tư duy.,Lịch sử - Địa lý 10-12 (Ôn thi THPT),90000,4.5,2,1,0,48903212185301648
+16,gv.lucn80,pass123,ngo.phys@tutormatch.vn,TS. Ngô Quang Lực,TUTOR,1,Tiến sĩ Vật lý chuyên bồi dưỡng học sinh giỏi cấp trường và cấp tỉnh.,Vật lý 10-11 (Cơ bản và nâng cao),170000,5,1,1,0,21378135127201228
+17,huong_ta18,pass123,tanaka.jp@tutormatch.vn,Ms. Tanaka Hương,TUTOR,1,Du học sinh Nhật 4 năm,Tiếng Nhật N5 - N3,140000,0,0,0,0,231580017946399
+18,tmanh964,pass123,anh.student@gmail.com,Trần Minh Anh,STUDENT,1,11,Sinh học 11,250000,20574066625762505
+19,bao_le.16,pass123,bao.student@gmail.com,Lê Hoàng Bảo,STUDENT,0,11,Toán 11,190000,31971813015089764
+20,chi_pham.74,pass123,chi.student@gmail.com,Phạm Thị Chi,STUDENT,1,12,Ngữ văn 12,230000,2687318179201091
+21,dung.nguyen08,pass123,dung.student@gmail.com,Nguyễn Quốc Dũng,STUDENT,1,12,Hóa học 12,100000,18648901799803961
+22,duong.vo07,pass123,duong.student@gmail.com,Võ Thùy Dương,STUDENT,1,12,Lịch sử 12,80000,3323154721630218
+23,dghan708,pass123,han.student@gmail.com,Đặng Gia Hân,STUDENT,1,12,Tin học 12,160000,13510865195860737
+24,hai.bui07,pass123,hai.student@gmail.com,Bùi Thanh Hải,STUDENT,0,12,Tiếng Nhật N5,150000,38862416342377758
+25,hnha464,pass123,ha.student@gmail.com,Hoàng Ngọc Hà,STUDENT,1,11,Vật lý 11,230000,57998089107112356
+26,hieumh2009,pass123,hieu.student@gmail.com,Huỳnh Minh Hiếu,STUDENT,1,12,Toán 12,250000,573105424631842
+27,huy_phan.29,pass123,huy.student@gmail.com,Phan Đức Huy,STUDENT,1,12,Tiếng Anh / IELTS,200000,52594209842414623
+28,vklinh292,pass123,linh.student@gmail.com,Vũ Khánh Linh,STUDENT,1,12,Sinh học 12,120000,39583095462552376
+29,kiet_do.90,pass123,kiet.student@gmail.com,Đỗ Tuấn Kiệt,STUDENT,1,11,Toán 11,120000,6023148817285514
+30,ngolong_15,pass123,long.student@gmail.com,Ngô Bảo Long,STUDENT,1,12,Ngữ văn 12,200000,20899518006518308
+31,mai.duong09,pass123,mai.student@gmail.com,Dương Thị Mai,STUDENT,1,12,Hóa học 12,80000,44394129270441701
+32,minh.ly08,pass123,minh.student@gmail.com,Lý Hoàng Minh,STUDENT,1,12,Lịch sử 12,100000,23116544980607169
+33,my_trinh.65,pass123,my.student@gmail.com,Trịnh Thảo My,STUDENT,1,11,Tin học 11,90000,56771474050904936
+34,dcphuc853,pass123,phuc.student@gmail.com,Đinh Công Phúc,STUDENT,1,11,Tiếng Nhật N4,80000,46501998903766591
+35,ltquynh748,pass123,quynh.student@gmail.com,Lương Thị Quỳnh,STUDENT,1,11,Vật lý 11,230000,34404472746302080
+36,quanat2005,pass123,quan.student@gmail.com,Tô Anh Quân,STUDENT,1,12,Toán 12,200000,21473763562065069
+37,son_mai.36,pass123,son.student@gmail.com,Mai Thanh Sơn,STUDENT,1,12,Tiếng Anh / IELTS,210000,34332047640777492
+38,thao_cao.92,pass123,thao.student@gmail.com,Cao Thị Thảo,STUDENT,1,12,Sinh học 12,220000,211612267499277
+39,thumh2009,pass123,thu.student@gmail.com,Hà Minh Thư,STUDENT,1,11,Toán 11,190000,30608410430161103
+40,tin_chau.93,pass123,tin.student@gmail.com,Châu Văn Tín,STUDENT,1,10,Ngữ văn 10,90000,56861138004653570
+41,trang.lam07,pass123,trang.student@gmail.com,Lâm Thu Trang,STUDENT,1,11,Hóa học 11,230000,28053251613390908
+42,trung_nguyen.69,pass123,trung.student@gmail.com,Nguyễn Đình Trung,STUDENT,1,11,Lịch sử 11,160000,58577758940774457
+43,vy.tran06,pass123,vy.student@gmail.com,Trần Khánh Vy,STUDENT,1,12,Tin học 12,210000,40613556093343040
+44,yen_pham.92,pass123,yen.student@gmail.com,Phạm Hải Yến,STUDENT,1,12,Tiếng Nhật N4,170000,31034551327040159
+45,lqvinh346,pass123,vinh.student@gmail.com,Lê Quang Vinh,STUDENT,1,12,Vật lý 12,240000,56385697789029138
+46,khoand2006,pass123,khoa.student@gmail.com,Đoàn Nhật Khoa,STUDENT,1,12,Toán 12,190000,20300717648648491
+47,bnlan588,pass123,lan.student@gmail.com,Bạch Ngọc Lan,STUDENT,1,12,Tiếng Anh / IELTS,210000,16529103743140868
+48,tung_ta.70,pass123,tung.student@gmail.com,Tạ Thanh Tùng,STUDENT,1,12,Sinh học 12,150000,69598336861211940
+49,hophuong_12,pass123,phuong.student@gmail.com,Hồ Diễm Phương,STUDENT,1,11,Toán 11,80000,306532554798592
+50,tban807,pass123,an.student@gmail.com,Thái Bình An,STUDENT,1,11,Ngữ văn 11,130000,30594307299837481

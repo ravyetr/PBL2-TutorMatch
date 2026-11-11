@@ -53,16 +53,28 @@ CMakeLists.txt.user*
 # 5. Flat-File Runtime Database & Sensitive Records (Strictly Excluded)
 /data/*.dat
 /data/*.dat.tmp
-/data/archive/
+/data/archive/*
+!/data/archive/legacy_bookings/
+!/data/archive/legacy_users/
+/data/archive/legacy_users/*
+!/data/archive/legacy_users/users_legacy_11fields_pre_migration.dat
 /data/backup_*/
 /data/staging_*/
 !/data/.gitkeep
+!/data/seed/
+!/data/seed/*.dat
+
+# 5.1 Local Backup Directories (Strictly Excluded)
+backup_*/
+backup_data_*/
 
 # 6. Test Sandboxes & Temporary Files
 test_*_data/
 tutormatch_*_sandbox/
+users_test_sandbox.dat
 *.tmp
 *.log
+*.bak
 
 # 7. Scratch Directories
 /scratch/

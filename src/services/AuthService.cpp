@@ -53,14 +53,9 @@ void AuthService::logout() {
 
 bool AuthService::registerStudent(const std::string& username, const std::string& password,
                                   const std::string& fullName, const std::string& email,
-                                  const std::string& gradeLevel, const std::string& preferredSubject,
-                                  double maxBudget, std::string& outError) {
+                                  const std::string& gradeLevel, std::string& outError) {
     if (username.empty() || password.empty() || fullName.empty() || email.empty()) {
         outError = "Vui lòng điền đầy đủ các thông tin bắt buộc!";
-        return false;
-    }
-    if (maxBudget < 0.0) {
-        outError = "Ngân sách không thể là số âm!";
         return false;
     }
 
@@ -81,13 +76,24 @@ bool AuthService::registerStudent(const std::string& username, const std::string
     }
 
     int newId = userRepo->getNextUserId();
-    Student s(newId, username, password, email, fullName, gLevel, preferredSubject, maxBudget, ScheduleGuard::VALID_SCHEDULE_MASK, true);
+    Student s(newId, username, password, email, fullName, gLevel, ScheduleGuard::VALID_SCHEDULE_MASK, true);
     if (userRepo->saveUser(s)) {
         outError = "";
         return true;
     }
     outError = "Lỗi ghi dữ liệu tài khoản mới!";
     return false;
+}
+
+bool AuthService::registerStudent(const std::string& username, const std::string& password,
+                                  const std::string& fullName, const std::string& email,
+                                  const std::string& gradeLevel, const std::string& /*preferredSubject*/,
+                                  double maxBudget, std::string& outError) {
+    if (maxBudget < 0.0) {
+        outError = "Ngân sách không thể là số âm!";
+        return false;
+    }
+    return registerStudent(username, password, fullName, email, gradeLevel, outError);
 }
 
 bool AuthService::registerTutor(const std::string& username, const std::string& password,
@@ -113,7 +119,7 @@ bool AuthService::registerTutor(const std::string& username, const std::string& 
     }
 
     int newId = userRepo->getNextUserId();
-    Tutor t(newId, username, password, email, fullName, bio, subjectSpecialty, hourlyRate, 5.0, 0, false, 0.0, ScheduleGuard::VALID_SCHEDULE_MASK, true);
+    Tutor t(newId, username, password, email, fullName, bio, subjectSpecialty, hourlyRate, 5.0, 0, 0.0, ScheduleGuard::VALID_SCHEDULE_MASK, true);
     if (userRepo->saveUser(t)) {
         outError = "";
         return true;

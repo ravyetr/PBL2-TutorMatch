@@ -16,7 +16,7 @@ Rectangle {
     property var usersModel: []
 
     function applyFilter(index) {
-        var filterKeys = ["ALL", "STUDENT", "VERIFIED_TUTORS", "PENDING_VERIFICATION", "LOCKED"]
+        var filterKeys = ["ALL", "STUDENT", "TUTOR", "LOCKED"]
         if (index >= 0 && index < filterKeys.length) {
             currentFilterKey = filterKeys[index]
         } else {
@@ -61,13 +61,13 @@ Rectangle {
                 ColumnLayout {
                     spacing: 4
                     Text {
-                        text: "Quản lý & Xác minh tài khoản"
+                        text: "Quản lý tài khoản người dùng"
                         font.bold: true
                         font.pixelSize: 18
                         color: Theme.textDark
                     }
                     Text {
-                        text: "Kiểm soát người dùng, tra cứu thông tin chi tiết và xác minh gia sư"
+                        text: "Kiểm soát người dùng, phân quyền và tra cứu thông tin chi tiết"
                         font.pixelSize: 12
                         color: Theme.textMuted
                     }
@@ -188,7 +188,7 @@ Rectangle {
                     spacing: 6
 
                     Repeater {
-                        model: ["Tất cả", "Học viên", "Gia sư đã xác minh", "Chờ duyệt hồ sơ", "Tài khoản bị khóa"]
+                        model: ["Tất cả", "Học viên", "Gia sư", "Đã khóa"]
 
                         SegmentedFilterButton {
                             text: modelData
@@ -317,26 +317,6 @@ Rectangle {
                                     color: modelData.isActive ? "#096dd9" : "#cf1322"
                                 }
                             }
-
-                            // Verification Badge (for Tutors)
-                            Rectangle {
-                                visible: (modelData.role === "Gia sư")
-                                implicitWidth: verifyBadgeText.implicitWidth + 16
-                                height: 26
-                                radius: 4
-                                color: (modelData.isVerified || modelData.isVerifiedBool) ? "#f6ffed" : "#fffbe6"
-                                border.color: (modelData.isVerified || modelData.isVerifiedBool) ? "#b7eb8f" : "#ffe58f"
-                                border.width: 1
-
-                                Text {
-                                    id: verifyBadgeText
-                                    anchors.centerIn: parent
-                                    text: (modelData.isVerified || modelData.isVerifiedBool) ? "ĐÃ XÁC MINH" : "CHƯA XÁC MINH"
-                                    font.pixelSize: 10
-                                    font.bold: true
-                                    color: (modelData.isVerified || modelData.isVerifiedBool) ? "#389e0d" : "#d48806"
-                                }
-                            }
                         }
 
                         // Context-Aware Action Buttons
@@ -364,59 +344,6 @@ Rectangle {
                                 }
                                 onClicked: {
                                     userDetailModal.openForUser(modelData.id)
-                                }
-                            }
-
-                            // Verify & Reject buttons (for Unverified Tutors)
-                            Button {
-                                visible: (modelData.role === "Gia sư" && !(modelData.isVerified || modelData.isVerifiedBool))
-                                text: "Xác minh"
-                                contentItem: Text {
-                                    text: parent.text
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                    color: Theme.btnText
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                                background: Rectangle {
-                                    implicitWidth: 72
-                                    implicitHeight: 30
-                                    radius: 4
-                                    color: parent.hovered ? "#b8aba0" : Theme.btnPrimary
-                                }
-                                onClicked: {
-                                    if (typeof guiBridge !== "undefined") {
-                                        guiBridge.qmlVerifyTutor(modelData.id, true)
-                                        adminUsersView.reloadUsers()
-                                    }
-                                }
-                            }
-
-                            Button {
-                                visible: (modelData.role === "Gia sư" && !(modelData.isVerified || modelData.isVerifiedBool))
-                                text: "Từ chối"
-                                contentItem: Text {
-                                    text: parent.text
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                    color: "#cf1322"
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                                background: Rectangle {
-                                    implicitWidth: 64
-                                    implicitHeight: 30
-                                    radius: 4
-                                    color: parent.hovered ? "#ffa39e" : "#fff1f0"
-                                    border.color: "#ffa39e"
-                                    border.width: 1
-                                }
-                                onClicked: {
-                                    if (typeof guiBridge !== "undefined") {
-                                        guiBridge.qmlVerifyTutor(modelData.id, false)
-                                        adminUsersView.reloadUsers()
-                                    }
                                 }
                             }
 

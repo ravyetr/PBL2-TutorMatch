@@ -4,6 +4,7 @@
 #include "../algorithms/MatchingEngine.h"
 #include "../storage/IRepository.h"
 #include "../models/User.h"
+#include "../models/CourseBooking.h"
 
 #include <memory>
 #include <vector>
@@ -12,27 +13,36 @@
 namespace TutorMatch {
 
 /**
- * @brief MatchingService coordinates the intelligent tutor matching application use case.
+ * @brief MatchingService coordinates intelligent tutor matching and criteria-based search.
  *
- * Implements ADR-003 (Service Extraction: Review & Matching):
- * - Application Service layer (BLL) encapsulating matching workflow.
+ * Implements ADR-003 and SmartMatch criteria-based ranking:
  * - Decouples Presentation Layer (GUIBridge, ConsoleApp) from direct Algorithmic Engine & Repository coordination.
- * - Retrieves active, verified candidate tutors from IUserRepository.
- * - Delegates ranking and top-K selection to MatchingEngine (Priority Queue / MaxHeap).
- * - Allows runtime strategy swapping (Strategy Pattern / Open-Closed Principle).
+ * - Retrieves active candidate tutors from IUserRepository.
+ * - Retrieves active course reservations from ICourseBookingRepository to check schedule conflicts.
+ * - Delegates eligibility filtering and 100-point ranking to MatchingEngine (MaxHeap).
  */
 class MatchingService {
 private:
     std::shared_ptr<IUserRepository> userRepo;
+    std::shared_ptr<ICourseBookingRepository> courseBookingRepo;
     std::unique_ptr<MatchingEngine> matchingEngine;
     mutable std::mutex serviceMutex;
 
 public:
     MatchingService(std::shared_ptr<IUserRepository> uRepo,
+                    std::shared_ptr<ICourseBookingRepository> cbRepo = nullptr,
                     std::unique_ptr<MatchingEngine> engine = nullptr);
     virtual ~MatchingService() = default;
 
-    // Use cases
+    void setCourseBookingRepository(std::shared_ptr<ICourseBookingRepository> cbRepo) {
+        std::lock_guard<std::mutex> lock(serviceMutex);
+        courseBookingRepo = std::move(cbRepo);
+    }
+
+    // Phase D: Criteria-based search
+    std::vector<TutorMatchResult> findMatchesWithCriteria(const SmartMatchCriteria& criteria, size_t topK = 5);
+
+    // Legacy use cases maintained for backward compatibility
     std::vector<TutorMatchResult> findTopMatchesForStudent(int studentId, size_t topK = 3);
     std::vector<TutorMatchResult> findMatches(const Student& student, size_t topK = 3);
 

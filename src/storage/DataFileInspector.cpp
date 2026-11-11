@@ -104,26 +104,31 @@ FileInspectionSummary DataFileInspector::inspectUsersFile(const std::string& dat
                 summary.validRecords++;
             }
         } else if (roleStr == "STUDENT") {
-            if (tokens.size() < 11) {
+            if (tokens.size() < 9) {
                 rec.isValid = false;
-                rec.errorMessage = "Bản ghi STUDENT không đủ trường (cần 11 trường, thực tế: " + std::to_string(tokens.size()) + ")";
+                rec.errorMessage = "Bản ghi STUDENT không đủ trường (cần ít nhất 9 trường, thực tế: " + std::to_string(tokens.size()) + ")";
                 summary.invalidRecords++;
             } else {
                 rec.fields.push_back({"gradeLevel", "Lớp " + tokens[7], "int", "Khối lớp học tập của học viên"});
-                rec.fields.push_back({"preferredSubject", tokens[8], "string", "Môn học mục tiêu cần tìm gia sư"});
-                rec.fields.push_back({"maxBudget", tokens[9] + " VNĐ/buổi", "double", "Ngân sách học phí chi trả tối đa"});
 
                 uint64_t mask = 0;
-                try { mask = std::stoull(tokens[10]); } catch (...) {}
+                if (tokens.size() == 9 || tokens.size() == 10) {
+                    try { mask = std::stoull(tokens[8]); } catch (...) {}
+                } else if (tokens.size() >= 11) {
+                    rec.fields.push_back({"preferredSubject [Legacy]", tokens[8], "string", "Môn học mục tiêu (định dạng cũ - đã loại bỏ khỏi hồ sơ)"});
+                    rec.fields.push_back({"maxBudget [Legacy]", tokens[9] + " VNĐ/buổi", "double", "Ngân sách tối đa (định dạng cũ - đã loại bỏ khỏi hồ sơ)"});
+                    try { mask = std::stoull(tokens[10]); } catch (...) {}
+                }
+
                 int freeSlots = ScheduleGuard::countMatchingSlots(mask, ScheduleGuard::VALID_SCHEDULE_MASK);
                 std::string maskDesc = std::to_string(mask) + " (" + std::to_string(freeSlots) + "/56 ca rảnh)";
                 rec.fields.push_back({"scheduleBitmask", maskDesc, "uint64_t", "Mặt nạ nhị phân thời khóa biểu 56 ca"});
                 summary.validRecords++;
             }
         } else if (roleStr == "TUTOR") {
-            if (tokens.size() < 15) {
+            if (tokens.size() < 14) {
                 rec.isValid = false;
-                rec.errorMessage = "Bản ghi TUTOR không đủ trường (cần 15 trường, thực tế: " + std::to_string(tokens.size()) + ")";
+                rec.errorMessage = "Bản ghi TUTOR không đủ trường (cần 14 trường, thực tế: " + std::to_string(tokens.size()) + ")";
                 summary.invalidRecords++;
             } else {
                 rec.fields.push_back({"bio", tokens[7], "string", "Tiểu sử & kinh nghiệm giảng dạy"});
@@ -131,11 +136,16 @@ FileInspectionSummary DataFileInspector::inspectUsersFile(const std::string& dat
                 rec.fields.push_back({"hourlyRate", tokens[9] + " VNĐ/buổi", "double", "Học phí đề xuất mỗi buổi học"});
                 rec.fields.push_back({"rating", tokens[10] + " ★", "double", "Điểm đánh giá trung bình tích lũy (1.0-5.0)"});
                 rec.fields.push_back({"totalReviews", tokens[11] + " lượt", "int", "Tổng số lượt đánh giá đã nhận"});
-                rec.fields.push_back({"isVerified", (tokens[12] == "1" ? "1 (Đã xác minh)" : "0 (Chưa xác minh)"), "bool/int", "Trạng thái kiểm duyệt hồ sơ từ Admin"});
-                rec.fields.push_back({"totalEarnings", tokens[13] + " VNĐ", "double", "Tổng thu nhập giảng dạy tích lũy"});
 
                 uint64_t mask = 0;
-                try { mask = std::stoull(tokens[14]); } catch (...) {}
+                if (tokens.size() == 14) {
+                    rec.fields.push_back({"totalEarnings", tokens[12] + " VNĐ", "double", "Tổng thu nhập giảng dạy tích lũy"});
+                    try { mask = std::stoull(tokens[13]); } catch (...) {}
+                } else {
+                    rec.fields.push_back({"totalEarnings", tokens[13] + " VNĐ", "double", "Tổng thu nhập giảng dạy tích lũy"});
+                    try { mask = std::stoull(tokens[14]); } catch (...) {}
+                }
+
                 int freeSlots = ScheduleGuard::countMatchingSlots(mask, ScheduleGuard::VALID_SCHEDULE_MASK);
                 std::string maskDesc = std::to_string(mask) + " (" + std::to_string(freeSlots) + "/56 ca rảnh)";
                 rec.fields.push_back({"scheduleBitmask", maskDesc, "uint64_t", "Mặt nạ nhị phân lịch rảnh giảng dạy 56 ca"});

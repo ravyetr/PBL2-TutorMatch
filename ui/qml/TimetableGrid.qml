@@ -8,6 +8,8 @@ Rectangle {
     radius: 12
     border.color: Theme.cardBorder
     border.width: 1
+    implicitWidth: 800
+    implicitHeight: 560
 
     property var scheduleData: []
     property var scheduleCells: []
@@ -423,12 +425,15 @@ Rectangle {
                     property int slotIdx: index
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.minimumHeight: 38
+                    Layout.preferredHeight: 46
                     spacing: 6
 
                     // Time Column Cell (Col 0)
                     Rectangle {
                         Layout.preferredWidth: 110
                         Layout.fillHeight: true
+                        Layout.minimumHeight: 38
                         Layout.preferredHeight: 46
                         color: Theme.bgApp
                         radius: 6
@@ -455,6 +460,7 @@ Rectangle {
 
                             Layout.fillWidth: true
                             Layout.fillHeight: true
+                            Layout.minimumHeight: 38
                             Layout.preferredHeight: 46
 
                             dayIndex: dayIdx

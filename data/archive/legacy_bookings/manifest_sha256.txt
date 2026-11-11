@@ -1,0 +1,5 @@
+original_file:bookings.dat
+archived_file:legacy_bookings_20261106_140537.dat
+sha256:89A428B8A5A69003A96C071B72609CE61B95EDDAAB8C00EFE22851517D2EED0C
+record_count:27
+archive_timestamp:20261106_140537

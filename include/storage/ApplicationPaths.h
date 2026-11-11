@@ -19,6 +19,12 @@ public:
      * 5. Fallback to executable directory + "/data".
      */
     static std::string resolveDataDirectory(const std::string& hint = "");
+
+    /**
+     * Resolves the version-controlled seed data directory for TutorMatch.
+     * Contains deterministic, sanitized initial data files (users.dat, course_bookings.dat, reviews.dat).
+     */
+    static std::string resolveSeedDirectory(const std::string& dataDirHint = "");
 };
 
 } // namespace TutorMatch

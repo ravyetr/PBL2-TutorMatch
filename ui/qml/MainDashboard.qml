@@ -128,7 +128,7 @@ Item {
 
                         Repeater {
                             model: mainDashboard.isAdminRole()
-                                   ? ["Tổng quan nền tảng", "Quản lý & Xác minh", "Giám sát Kết nối", "Kiểm duyệt Đánh giá", "Đăng xuất"]
+                                   ? ["Tổng quan nền tảng", "Quản lý người dùng", "Giám sát Kết nối", "Kiểm duyệt Đánh giá", "Đăng xuất"]
                                    : mainDashboard.isTutorRole()
                                      ? ["Tổng quan & Lịch dạy", "Yêu cầu kết nối", "Học viên & Khóa học", "Đánh giá từ học viên", "Đăng xuất"]
                                      : ["Hồ sơ & Thời khóa biểu", "Tìm kiếm Gia sư", "Gợi ý Thông minh", "Lịch học & Kết nối", "Đăng xuất"]

@@ -56,7 +56,7 @@ public:
     static std::vector<ScheduledSession> generateMultiSlotSessions(
         const std::string& startDate,
         int weeksCount,
-        const std::vector<std::pair<int, int>>& slots);
+        const std::vector<std::pair<int, int>>& weeklySlots);
 
     /**
      * @brief Calculates end date of course: startDate + 7 * (weeksCount - 1) days.

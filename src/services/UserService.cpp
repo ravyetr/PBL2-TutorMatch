@@ -1,4 +1,5 @@
 #include "services/UserService.h"
+#include "algorithms/TutorSearchMatcher.h"
 #include <algorithm>
 #include <cctype>
 
@@ -29,7 +30,7 @@ std::shared_ptr<Tutor> UserService::getTutorById(int tutorId) {
 }
 
 bool UserService::updateStudentProfile(Student& student, const std::string& name, const std::string& email,
-                                      int grade, const std::string& targetSubject, double budget, std::string& outError) {
+                                      int grade, std::string& outError) {
     if (name.empty()) {
         outError = "Họ và tên không được để trống!";
         return false;
@@ -38,16 +39,14 @@ bool UserService::updateStudentProfile(Student& student, const std::string& name
         outError = "Email không được để trống!";
         return false;
     }
-    if (budget < 0.0) {
-        outError = "Ngân sách không hợp lệ!";
+    if (grade < 0 || grade > 12) {
+        outError = "Khối lớp không hợp lệ (yêu cầu từ 0 đến 12)!";
         return false;
     }
 
     student.setFullName(name);
     student.setEmail(email);
     student.setGradeLevel(grade);
-    student.setPreferredSubject(targetSubject);
-    student.setMaxBudget(budget);
 
     if (!userRepo || !userRepo->updateUser(student)) {
         outError = "Lỗi lưu thông tin cập nhật vào tệp users.dat!";
@@ -56,6 +55,16 @@ bool UserService::updateStudentProfile(Student& student, const std::string& name
 
     outError = "";
     return true;
+}
+
+bool UserService::updateStudentProfile(Student& student, const std::string& name, const std::string& email,
+                                      int grade, const std::string& /*targetSubject*/, double budget, std::string& outError) {
+    if (budget < 0.0) {
+        outError = "Ngân sách không hợp lệ!";
+        return false;
+    }
+
+    return updateStudentProfile(student, name, email, grade, outError);
 }
 
 bool UserService::toggleStudentScheduleSlot(Student& student, int day, int slot, std::string& outMsg) {
@@ -139,59 +148,9 @@ std::vector<std::shared_ptr<Tutor>> UserService::searchAndFilterTutors(const std
                                                                       const std::string& subject,
                                                                       double minPrice, double maxPrice,
                                                                       double minRating) {
-    std::vector<std::shared_ptr<Tutor>> result;
-    if (!userRepo) return result;
-
+    if (!userRepo) return {};
     auto tutors = userRepo->getAllTutors();
-    std::string kw = keyword;
-    std::transform(kw.begin(), kw.end(), kw.begin(), [](unsigned char c) { return std::tolower(c); });
-
-    for (const auto& t : tutors) {
-        if (!t || !t->getIsActive()) continue;
-
-        std::string tName = t->getFullName();
-        std::string tSubject = t->getSubjectSpecialty();
-        std::string tBio = t->getBio();
-
-        // Keyword filter
-        if (!kw.empty()) {
-            std::string lowerName = tName;
-            std::string lowerSubj = tSubject;
-            std::string lowerBio = tBio;
-            std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), [](unsigned char c) { return std::tolower(c); });
-            std::transform(lowerSubj.begin(), lowerSubj.end(), lowerSubj.begin(), [](unsigned char c) { return std::tolower(c); });
-            std::transform(lowerBio.begin(), lowerBio.end(), lowerBio.begin(), [](unsigned char c) { return std::tolower(c); });
-
-            if (lowerName.find(kw) == std::string::npos &&
-                lowerSubj.find(kw) == std::string::npos &&
-                lowerBio.find(kw) == std::string::npos) {
-                continue;
-            }
-        }
-
-        // Subject filter using taxonomy
-        if (!subject.empty()) {
-            if (!SubjectTaxonomy::matchesFilter(tSubject, subject)) {
-                continue;
-            }
-        }
-
-        // Price filter
-        if (minPrice > 0.0 && t->getHourlyRate() < minPrice) {
-            continue;
-        }
-        if (maxPrice > 0.0 && t->getHourlyRate() > maxPrice) {
-            continue;
-        }
-
-        // Rating filter
-        if (minRating > 0.0 && t->getRating() < minRating) {
-            continue;
-        }
-
-        result.push_back(t);
-    }
-    return result;
+    return TutorSearchMatcher::searchAndRank(tutors, keyword, subject, minPrice, maxPrice, minRating);
 }
 
 std::vector<std::shared_ptr<Tutor>> UserService::getAllActiveTutors() {

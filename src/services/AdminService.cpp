@@ -31,16 +31,6 @@ AdminMetrics AdminService::calculateMetrics() {
         }
     }
 
-    auto users = userRepo->getAllUsers();
-    for (const auto& u : users) {
-        if (u && u->getRole() == UserRole::TUTOR && u->getIsActive()) {
-            auto t = std::static_pointer_cast<Tutor>(u);
-            if (!t->getIsVerified()) {
-                m.pendingVerification++;
-            }
-        }
-    }
-
     return m;
 }
 
@@ -72,12 +62,6 @@ std::vector<std::shared_ptr<User>> AdminService::getFilteredUsers(const std::str
             roleMatches = true;
         } else if ((upperFilter == "TUTOR" || upperFilter == "ALL_TUTORS") && u->getRole() == UserRole::TUTOR) {
             roleMatches = true;
-        } else if ((upperFilter == "VERIFIED_TUTORS" || upperFilter == "VERIFIED_TUTOR") && u->getRole() == UserRole::TUTOR) {
-            auto t = std::static_pointer_cast<Tutor>(u);
-            if (t->getIsVerified()) roleMatches = true;
-        } else if ((upperFilter == "PENDING_VERIFICATION" || upperFilter == "UNVERIFIED_TUTORS" || upperFilter == "UNVERIFIED_TUTOR") && u->getRole() == UserRole::TUTOR) {
-            auto t = std::static_pointer_cast<Tutor>(u);
-            if (!t->getIsVerified()) roleMatches = true;
         } else if (upperFilter == "LOCKED" && !u->getIsActive()) {
             roleMatches = true;
         }
@@ -93,7 +77,7 @@ std::vector<std::shared_ptr<User>> AdminService::getFilteredUsers(const std::str
             if (u->getRole() == UserRole::TUTOR) {
                 subjLower = std::static_pointer_cast<Tutor>(u)->getSubjectSpecialty();
             } else if (u->getRole() == UserRole::STUDENT) {
-                subjLower = std::static_pointer_cast<Student>(u)->getPreferredSubject();
+                subjLower = "lớp " + std::to_string(std::static_pointer_cast<Student>(u)->getGradeLevel());
             }
             std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), [](unsigned char c) { return std::tolower(c); });
             std::transform(emailLower.begin(), emailLower.end(), emailLower.begin(), [](unsigned char c) { return std::tolower(c); });
@@ -112,20 +96,6 @@ std::vector<std::shared_ptr<User>> AdminService::getFilteredUsers(const std::str
     }
 
     return result;
-}
-
-bool AdminService::verifyTutor(int tutorId, bool approve, std::string& outMsg) {
-    if (!userRepo) return false;
-    auto u = userRepo->findUserById(tutorId);
-    if (u && u->getRole() == UserRole::TUTOR) {
-        auto t = std::static_pointer_cast<Tutor>(u);
-        t->setIsVerified(approve);
-        userRepo->updateUser(*t);
-        outMsg = "Đã cập nhật trạng thái xác minh gia sư " + t->getFullName() + " thành: " + (approve ? "ĐÃ XÁC MINH" : "CHƯA XÁC MINH");
-        return true;
-    }
-    outMsg = "Không tìm thấy gia sư cần xác minh!";
-    return false;
 }
 
 bool AdminService::toggleUserLock(int userId, std::string& outMsg) {

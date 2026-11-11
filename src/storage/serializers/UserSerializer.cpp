@@ -16,8 +16,6 @@ std::string UserSerializer::toCsv(const Student& s) {
         << userRoleToString(s.getRole()) << ","
         << (s.getIsActive() ? 1 : 0) << ","
         << s.getGradeLevel() << ","
-        << SerializerUtils::escapeCsv(s.getPreferredSubject()) << ","
-        << s.getMaxBudget() << ","
         << s.getScheduleBitmask();
     return oss.str();
 }
@@ -36,7 +34,6 @@ std::string UserSerializer::toCsv(const Tutor& t) {
         << t.getHourlyRate() << ","
         << t.getRating() << ","
         << t.getTotalReviews() << ","
-        << (t.getIsVerified() ? 1 : 0) << ","
         << t.getTotalEarnings() << ","
         << t.getScheduleBitmask();
     return oss.str();
@@ -116,9 +113,9 @@ std::shared_ptr<User> UserSerializer::fromCsv(const std::string& csvLine, std::s
     bool isActive = (activeInt == 1);
 
     if (roleStr == "STUDENT") {
-        if (tokens.size() < 11) {
+        if (tokens.size() < 9) {
             if (outError) {
-                *outError = "Student CSV requires at least 11 fields, got " + std::to_string(tokens.size());
+                *outError = "Student CSV requires at least 9 fields, got " + std::to_string(tokens.size());
             }
             return nullptr;
         }
@@ -129,28 +126,32 @@ std::shared_ptr<User> UserSerializer::fromCsv(const std::string& csvLine, std::s
             return nullptr;
         }
 
-        std::string preferredSubject = tokens[8];
-
-        double maxBudget;
-        if (!SerializerUtils::safeStringToDouble(tokens[9], maxBudget)) {
-            if (outError) *outError = "Invalid Student maxBudget: " + tokens[9];
-            return nullptr;
-        }
-
-        uint64_t mask;
-        if (!SerializerUtils::safeStringToUll(tokens[10], mask)) {
-            if (outError) *outError = "Invalid Student scheduleBitmask: " + tokens[10];
-            return nullptr;
+        uint64_t mask = 0;
+        if (tokens.size() == 9 || tokens.size() == 10) {
+            // Canonical 9-field schema: token 8 is scheduleBitmask
+            if (!SerializerUtils::safeStringToUll(tokens[8], mask)) {
+                if (outError) *outError = "Invalid Student scheduleBitmask: " + tokens[8];
+                return nullptr;
+            }
+        } else if (tokens.size() >= 11) {
+            // Legacy 11-field schema:
+            // token 7: gradeLevel
+            // token 8: preferredSubject (obsolete search preference, safely discarded)
+            // token 9: maxBudget (obsolete search preference, safely discarded)
+            // token 10: scheduleBitmask
+            if (!SerializerUtils::safeStringToUll(tokens[10], mask)) {
+                if (outError) *outError = "Invalid Student scheduleBitmask: " + tokens[10];
+                return nullptr;
+            }
         }
 
         uint64_t sanitizedMask = ScheduleGuard::sanitizeMask(mask);
         return std::make_shared<Student>(id, username, passwordHash, email, fullName,
-                                         gradeLevel, preferredSubject, maxBudget,
-                                         sanitizedMask, isActive);
+                                         gradeLevel, sanitizedMask, isActive);
     } else if (roleStr == "TUTOR") {
-        if (tokens.size() < 15) {
+        if (tokens.size() < 14) {
             if (outError) {
-                *outError = "Tutor CSV requires at least 15 fields, got " + std::to_string(tokens.size());
+                *outError = "Tutor CSV requires at least 14 fields, got " + std::to_string(tokens.size());
             }
             return nullptr;
         }
@@ -176,29 +177,36 @@ std::shared_ptr<User> UserSerializer::fromCsv(const std::string& csvLine, std::s
             return nullptr;
         }
 
-        int verifiedInt;
-        if (!SerializerUtils::safeStringToInt(tokens[12], verifiedInt)) {
-            if (outError) *outError = "Invalid Tutor isVerified flag: " + tokens[12];
-            return nullptr;
-        }
-        bool isVerified = (verifiedInt == 1);
+        double totalEarnings = 0.0;
+        uint64_t mask = 0;
 
-        double totalEarnings;
-        if (!SerializerUtils::safeStringToDouble(tokens[13], totalEarnings)) {
-            if (outError) *outError = "Invalid Tutor totalEarnings: " + tokens[13];
-            return nullptr;
-        }
-
-        uint64_t mask;
-        if (!SerializerUtils::safeStringToUll(tokens[14], mask)) {
-            if (outError) *outError = "Invalid Tutor scheduleBitmask: " + tokens[14];
-            return nullptr;
+        if (tokens.size() == 14) {
+            // Canonical schema (14 tokens): token 12 is totalEarnings, token 13 is scheduleBitmask
+            if (!SerializerUtils::safeStringToDouble(tokens[12], totalEarnings)) {
+                if (outError) *outError = "Invalid Tutor totalEarnings: " + tokens[12];
+                return nullptr;
+            }
+            if (!SerializerUtils::safeStringToUll(tokens[13], mask)) {
+                if (outError) *outError = "Invalid Tutor scheduleBitmask: " + tokens[13];
+                return nullptr;
+            }
+        } else {
+            // Legacy schema (15 tokens): token 12 was isVerified (safely discarded),
+            // token 13 is totalEarnings, token 14 is scheduleBitmask
+            if (!SerializerUtils::safeStringToDouble(tokens[13], totalEarnings)) {
+                if (outError) *outError = "Invalid Tutor totalEarnings: " + tokens[13];
+                return nullptr;
+            }
+            if (!SerializerUtils::safeStringToUll(tokens[14], mask)) {
+                if (outError) *outError = "Invalid Tutor scheduleBitmask: " + tokens[14];
+                return nullptr;
+            }
         }
 
         uint64_t sanitizedMask = ScheduleGuard::sanitizeMask(mask);
         return std::make_shared<Tutor>(id, username, passwordHash, email, fullName,
                                        bio, subjectSpecialty, hourlyRate, rating,
-                                       totalReviews, isVerified, totalEarnings,
+                                       totalReviews, totalEarnings,
                                        sanitizedMask, isActive);
     } else if (roleStr == "ADMIN") {
         if (tokens.size() < 8) {

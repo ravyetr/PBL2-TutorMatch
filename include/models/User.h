@@ -85,26 +85,26 @@ public:
 class Student : public User {
 private:
     int gradeLevel;
-    std::string preferredSubject;
-    double maxBudget;
     uint64_t scheduleBitmask;
 
 public:
-    Student() : User(0, "", "", "", "", UserRole::STUDENT), gradeLevel(10), maxBudget(0.0), scheduleBitmask(0) {}
+    Student() : User(0, "", "", "", "", UserRole::STUDENT), gradeLevel(10), scheduleBitmask(0) {}
+
+    // Canonical Constructor: No persistent search preferences (subject/budget are dynamic in SmartMatch)
     Student(int id, std::string username, std::string passwordHash, std::string email, std::string fullName,
-            int gradeLevel, std::string preferredSubject, double maxBudget, uint64_t scheduleBitmask, bool isActive = true)
+            int gradeLevel, uint64_t scheduleBitmask, bool isActive = true)
         : User(id, std::move(username), std::move(passwordHash), std::move(email), std::move(fullName), UserRole::STUDENT, isActive),
-          gradeLevel(gradeLevel), preferredSubject(std::move(preferredSubject)), maxBudget(maxBudget),
+          gradeLevel(gradeLevel),
           scheduleBitmask(ScheduleGuard::sanitizeMask(scheduleBitmask)) {}
+
+    // Deprecated Legacy Constructor: Tolerates legacy callers passing obsolete subject/budget parameters
+    Student(int id, std::string username, std::string passwordHash, std::string email, std::string fullName,
+            int gradeLevel, const std::string& /*legacySubject*/, double /*legacyBudget*/, uint64_t scheduleBitmask, bool isActive = true)
+        : Student(id, std::move(username), std::move(passwordHash), std::move(email), std::move(fullName),
+                  gradeLevel, scheduleBitmask, isActive) {}
 
     int getGradeLevel() const { return gradeLevel; }
     void setGradeLevel(int g) { gradeLevel = g; }
-
-    const std::string& getPreferredSubject() const { return preferredSubject; }
-    void setPreferredSubject(const std::string& subj) { preferredSubject = subj; }
-
-    double getMaxBudget() const { return maxBudget; }
-    void setMaxBudget(double b) { maxBudget = b; }
 
     uint64_t getScheduleBitmask() const { return scheduleBitmask; }
     void setScheduleBitmask(uint64_t mask) { scheduleBitmask = ScheduleGuard::sanitizeMask(mask); }
@@ -123,19 +123,20 @@ private:
     double hourlyRate;
     double rating;
     int totalReviews;
-    bool isVerified;
     double totalEarnings;
     uint64_t scheduleBitmask;
 
 public:
     Tutor() : User(0, "", "", "", "", UserRole::TUTOR), hourlyRate(0.0), rating(5.0), totalReviews(0),
-              isVerified(false), totalEarnings(0.0), scheduleBitmask(0) {}
+              totalEarnings(0.0), scheduleBitmask(0) {}
+
+    // Canonical Constructor: No persistent verification flag (decommissioned across system)
     Tutor(int id, std::string username, std::string passwordHash, std::string email, std::string fullName,
           std::string bio, std::string subjectSpecialty, double hourlyRate, double rating, int totalReviews,
-          bool isVerified, double totalEarnings, uint64_t scheduleBitmask, bool isActive = true)
+          double totalEarnings, uint64_t scheduleBitmask, bool isActive = true)
         : User(id, std::move(username), std::move(passwordHash), std::move(email), std::move(fullName), UserRole::TUTOR, isActive),
           bio(std::move(bio)), subjectSpecialty(std::move(subjectSpecialty)), hourlyRate(hourlyRate),
-          rating(rating), totalReviews(totalReviews), isVerified(isVerified), totalEarnings(totalEarnings),
+          rating(rating), totalReviews(totalReviews), totalEarnings(totalEarnings),
           scheduleBitmask(ScheduleGuard::sanitizeMask(scheduleBitmask)) {}
 
     const std::string& getBio() const { return bio; }
@@ -152,9 +153,6 @@ public:
 
     int getTotalReviews() const { return totalReviews; }
     void setTotalReviews(int cnt) { totalReviews = cnt; }
-
-    bool getIsVerified() const { return isVerified; }
-    void setIsVerified(bool v) { isVerified = v; }
 
     double getTotalEarnings() const { return totalEarnings; }
     void addEarnings(double amt) { totalEarnings += amt; }

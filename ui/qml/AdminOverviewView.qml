@@ -12,13 +12,40 @@ Rectangle {
 
     property var platformStats: ({})
     property var recentConnections: []
-    property var pendingTutors: []
+
+    function getPrimarySchedule(item) {
+        if (!item) return ""
+        if (item.slotText) return item.slotText
+        var label = item.slotLabel || ""
+        var idx = label.indexOf(" (")
+        if (idx !== -1) {
+            return label.substring(0, idx)
+        }
+        return label
+    }
+
+    function getSecondarySchedule(item) {
+        if (!item) return ""
+        if (item.weeksCount && item.startDate) {
+            return "Khóa " + item.weeksCount + " tuần · Bắt đầu: " + item.startDate
+        }
+        var label = item.slotLabel || ""
+        var idx = label.indexOf(" (")
+        if (idx !== -1) {
+            var sub = label.substring(idx + 2)
+            if (sub.endsWith(")")) sub = sub.substring(0, sub.length - 1)
+            return sub.replace(", từ ", " · Bắt đầu: ").replace("từ ", "Bắt đầu: ")
+        }
+        if (item.startDate) {
+            return "Bắt đầu: " + item.startDate
+        }
+        return ""
+    }
 
     function reloadData() {
         if (typeof guiBridge !== "undefined") {
             platformStats = guiBridge.qmlGetAdminPlatformStats()
             recentConnections = guiBridge.qmlGetRecentConnections(6)
-            pendingTutors = guiBridge.qmlGetPendingVerificationTutors()
         }
     }
 
@@ -56,7 +83,7 @@ Rectangle {
                         color: Theme.textDark
                     }
                     Text {
-                        text: "Theo dõi chỉ số thực tế, kết nối lớp học & duyệt xác minh hồ sơ gia sư"
+                        text: "Theo dõi chỉ số thực tế, kết nối lớp học & hoạt động hệ thống"
                         font.pixelSize: 12
                         color: Theme.textMuted
                     }
@@ -197,12 +224,12 @@ Rectangle {
                     }
                 }
 
-                // Card 4: Chờ xác minh
+                // Card 4: Khóa học hoàn thành
                 Rectangle {
                     Layout.fillWidth: true
                     height: 90
                     radius: 8
-                    color: (adminOverviewRoot.platformStats.pendingVerification > 0) ? Theme.accentBlue : Theme.bgApp
+                    color: Theme.bgApp
                     border.color: Theme.cardBorder
                     border.width: 1
 
@@ -213,37 +240,31 @@ Rectangle {
 
                         RowLayout {
                             spacing: 8
-                            Text { text: "✓"; font.pixelSize: 16; font.bold: true }
-                            Text { text: "Gia sư chờ xác minh"; font.pixelSize: 12; color: Theme.textDark; font.bold: true }
+                            Text { text: "✓"; font.pixelSize: 16; font.bold: true; color: "#52c41a" }
+                            Text { text: "Khóa học hoàn thành"; font.pixelSize: 12; color: Theme.textDark; font.bold: true }
                         }
                         Text {
-                            text: (adminOverviewRoot.platformStats.pendingVerification || 0).toString()
+                            text: (adminOverviewRoot.platformStats.completedMatches || adminOverviewRoot.platformStats.completedBookings || 0).toString()
                             font.bold: true
                             font.pixelSize: 26
-                            color: (adminOverviewRoot.platformStats.pendingVerification > 0) ? "#cf1322" : Theme.textDark
+                            color: "#52c41a"
                         }
                     }
                 }
             }
 
-            // 3. Split Section: Recent Connections & Pending Verifications
-            RowLayout {
+            // 3. Section: Recent Connections
+            Rectangle {
                 Layout.fillWidth: true
-                spacing: 20
+                implicitHeight: 430
+                color: Theme.cardBg
+                radius: 8
+                border.color: Theme.cardBorder
+                border.width: 1
 
-                // Left Panel: Recent Connections
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 3
-                    implicitHeight: 380
-                    color: Theme.cardBg
-                    radius: 8
-                    border.color: Theme.cardBorder
-                    border.width: 1
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 16
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 16
                         spacing: 12
 
                         Text {
@@ -258,12 +279,18 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            spacing: 8
+                            spacing: 6
+                            boundsBehavior: Flickable.StopAtBounds
                             model: adminOverviewRoot.recentConnections
+
+                            ScrollBar.vertical: ScrollBar {
+                                id: connScrollBar
+                                policy: ScrollBar.AsNeeded
+                            }
 
                             delegate: Rectangle {
                                 width: connectionsListView.width
-                                height: 50
+                                height: 56
                                 color: Theme.bgApp
                                 radius: 6
                                 border.color: Theme.cardBorder
@@ -273,57 +300,110 @@ Rectangle {
                                     anchors.fill: parent
                                     anchors.leftMargin: 12
                                     anchors.rightMargin: 12
-                                    spacing: 10
+                                    spacing: 12
 
-                                    // Student -> Tutor
+                                    // Region A: Student ↔ Tutor Identity & Course Subject
                                     ColumnLayout {
-                                        Layout.preferredWidth: 180
+                                        id: regionA
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 160
+                                        Layout.preferredWidth: 220
+                                        Layout.maximumWidth: 280
+                                        Layout.alignment: Qt.AlignVCenter
                                         spacing: 2
+
                                         Text {
-                                            text: modelData.studentName + " ↔ " + modelData.tutorName
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: (modelData.studentName || "Học viên") + " ↔ " + (modelData.tutorName || "Gia sư")
                                             font.bold: true
                                             font.pixelSize: 12
                                             color: Theme.textDark
                                             elide: Text.ElideRight
+                                            maximumLineCount: 1
                                         }
+
                                         Text {
-                                            text: modelData.subject
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: "📚 " + (modelData.subject || "Chưa cập nhật môn")
                                             font.pixelSize: 11
                                             color: Theme.textMuted
                                             elide: Text.ElideRight
+                                            maximumLineCount: 1
                                         }
                                     }
 
-                                    // Schedule slot
-                                    Text {
-                                        text: modelData.slotLabel || ""
-                                        font.pixelSize: 11
-                                        color: Theme.textDark
+                                    // Region B: Schedule Information (Two-line layout)
+                                    ColumnLayout {
+                                        id: regionB
                                         Layout.fillWidth: true
-                                        elide: Text.ElideRight
+                                        Layout.minimumWidth: 160
+                                        Layout.preferredWidth: 230
+                                        Layout.maximumWidth: 320
+                                        Layout.alignment: Qt.AlignVCenter
+                                        spacing: 2
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: "⏰ " + adminOverviewRoot.getPrimarySchedule(modelData)
+                                            font.bold: true
+                                            font.pixelSize: 11
+                                            color: Theme.textDark
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: "🗓️ " + adminOverviewRoot.getSecondarySchedule(modelData)
+                                            visible: text.length > 4
+                                            font.pixelSize: 10
+                                            color: Theme.textMuted
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                        }
                                     }
 
-                                    // Status Badge
+                                    // Region C: Connection Status Badge
                                     Rectangle {
-                                        Layout.preferredWidth: 100
+                                        id: statusBadge
+                                        Layout.preferredWidth: 96
+                                        Layout.minimumWidth: 90
+                                        Layout.maximumWidth: 110
                                         height: 24
                                         radius: 4
+                                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                                         color: (modelData.status === "ACCEPTED") ? "#e6f7ff" :
                                                (modelData.status === "COMPLETED") ? "#f6ffed" :
-                                               (modelData.status === "PENDING") ? "#fffbe6" : "#fff1f0"
+                                               (modelData.status === "PENDING") ? "#fffbe6" :
+                                               (modelData.status === "EARLY_TERMINATED") ? "#fff7e6" : "#fff1f0"
                                         border.color: (modelData.status === "ACCEPTED") ? "#91d5ff" :
                                                       (modelData.status === "COMPLETED") ? "#b7eb8f" :
-                                                      (modelData.status === "PENDING") ? "#ffe58f" : "#ffa39e"
+                                                      (modelData.status === "PENDING") ? "#ffe58f" :
+                                                      (modelData.status === "EARLY_TERMINATED") ? "#ffa940" : "#ffa39e"
                                         border.width: 1
 
                                         Text {
                                             anchors.centerIn: parent
-                                            text: modelData.statusText || modelData.status
+                                            anchors.leftMargin: 4
+                                            anchors.rightMargin: 4
+                                            text: (modelData.status === "EARLY_TERMINATED") ? "KẾT THÚC SỚM" :
+                                                  (modelData.status === "ACCEPTED") ? "ĐANG HỌC" :
+                                                  (modelData.status === "COMPLETED") ? "HOÀN THÀNH" :
+                                                  (modelData.status === "PENDING") ? "CHỜ DUYỆT" :
+                                                  (modelData.status === "CANCELLED") ? "ĐÃ HỦY" :
+                                                  (modelData.status === "REJECTED") ? "TỪ CHỐI" :
+                                                  (modelData.statusText || modelData.status)
                                             font.pixelSize: 10
                                             font.bold: true
                                             color: (modelData.status === "ACCEPTED") ? "#096dd9" :
                                                    (modelData.status === "COMPLETED") ? "#389e0d" :
-                                                   (modelData.status === "PENDING") ? "#d48806" : "#cf1322"
+                                                   (modelData.status === "PENDING") ? "#d48806" :
+                                                   (modelData.status === "EARLY_TERMINATED") ? "#d46b08" : "#cf1322"
+                                            elide: Text.ElideRight
                                         }
                                     }
                                 }
@@ -331,7 +411,7 @@ Rectangle {
 
                             Rectangle {
                                 anchors.centerIn: parent
-                                visible: adminOverviewRoot.recentConnections.length === 0
+                                visible: !adminOverviewRoot.recentConnections || adminOverviewRoot.recentConnections.length === 0
                                 color: "transparent"
                                 Text {
                                     anchors.centerIn: parent
@@ -343,110 +423,6 @@ Rectangle {
                         }
                     }
                 }
-
-                // Right Panel: Pending Tutor Verifications
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 2
-                    implicitHeight: 380
-                    color: Theme.cardBg
-                    radius: 8
-                    border.color: Theme.cardBorder
-                    border.width: 1
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 16
-                        spacing: 12
-
-                        Text {
-                            text: "GIA SƯ CHỜ XÁC MINH HỒ SƠ"
-                            font.bold: true
-                            font.pixelSize: 14
-                            color: Theme.textDark
-                        }
-
-                        ListView {
-                            id: pendingTutorsListView
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            clip: true
-                            spacing: 8
-                            model: adminOverviewRoot.pendingTutors
-
-                            delegate: Rectangle {
-                                width: pendingTutorsListView.width
-                                height: 50
-                                color: Theme.bgApp
-                                radius: 6
-                                border.color: Theme.cardBorder
-                                border.width: 1
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 12
-                                    anchors.rightMargin: 12
-                                    spacing: 10
-
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 2
-                                        Text {
-                                            text: modelData.fullName
-                                            font.bold: true
-                                            font.pixelSize: 12
-                                            color: Theme.textDark
-                                            elide: Text.ElideRight
-                                        }
-                                        Text {
-                                            text: modelData.subject || "Chưa cập nhật chuyên môn"
-                                            font.pixelSize: 11
-                                            color: Theme.textMuted
-                                            elide: Text.ElideRight
-                                        }
-                                    }
-
-                                    Button {
-                                        text: "Xác minh"
-                                        contentItem: Text {
-                                            text: parent.text
-                                            font.pixelSize: 11
-                                            font.bold: true
-                                            color: Theme.btnText
-                                            horizontalAlignment: Text.AlignHCenter
-                                            verticalAlignment: Text.AlignVCenter
-                                        }
-                                        background: Rectangle {
-                                            implicitWidth: 80
-                                            implicitHeight: 28
-                                            radius: 4
-                                            color: parent.hovered ? "#b8aba0" : Theme.btnPrimary
-                                        }
-                                        onClicked: {
-                                            if (typeof guiBridge !== "undefined") {
-                                                guiBridge.qmlVerifyTutor(modelData.id, true)
-                                                adminOverviewRoot.reloadData()
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.centerIn: parent
-                                visible: adminOverviewRoot.pendingTutors.length === 0
-                                color: "transparent"
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "Tất cả gia sư đều đã được xác minh"
-                                    font.pixelSize: 13
-                                    color: Theme.textMuted
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
-}

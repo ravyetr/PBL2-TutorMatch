@@ -19,7 +19,6 @@ struct AdminMetrics {
     int totalBookings = 0;
     int completedBookings = 0;
     int activeMatches = 0;
-    int pendingVerification = 0;
 };
 
 /**
@@ -50,7 +49,6 @@ public:
     std::vector<std::shared_ptr<User>> getFilteredUsers(const std::string& filter,
                                                         const std::string& searchKeyword);
 
-    bool verifyTutor(int tutorId, bool approve, std::string& outMsg);
     bool toggleUserLock(int userId, std::string& outMsg);
     bool deleteViolatingReview(int reviewId, std::string& outMsg);
     bool terminateMatch(int bookingId, std::string& outMsg);

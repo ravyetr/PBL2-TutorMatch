@@ -30,6 +30,9 @@ public:
     std::shared_ptr<Tutor> getTutorById(int tutorId);
 
     bool updateStudentProfile(Student& student, const std::string& name, const std::string& email,
+                              int grade, std::string& outError);
+
+    bool updateStudentProfile(Student& student, const std::string& name, const std::string& email,
                               int grade, const std::string& targetSubject, double budget, std::string& outError);
 
     bool toggleStudentScheduleSlot(Student& student, int day, int slot, std::string& outMsg);

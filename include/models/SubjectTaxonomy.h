@@ -18,6 +18,8 @@ enum class CanonicalSubject {
     COMPUTER_SCIENCE,
     BIOLOGY,
     LITERATURE,
+    HISTORY,
+    GEOGRAPHY,
     OTHER
 };
 
@@ -35,6 +37,7 @@ class SubjectTaxonomy {
 public:
     static std::string stripAccents(const std::string& input);
     static std::string normalizeText(const std::string& input);
+    static std::vector<CanonicalSubject> getCanonicalSubjects(const std::string& subjectStr);
     static ParsedSubject parseSubject(const std::string& subjectStr);
     
     static std::string getCanonicalCodeString(CanonicalSubject code);
@@ -42,6 +45,7 @@ public:
     static std::string canonicalCodeToDisplay(const std::string& codeOrText);
 
     static bool matchesFilter(const std::string& tutorSubjectStr, const std::string& filterSubjectStr);
+    static double calculateAffinityScore(const std::string& targetSubject, int targetGrade, const Tutor& tutor);
     static double calculateAffinityScore(const Student& student, const Tutor& tutor);
 
     static std::vector<std::pair<std::string, std::string>> getAvailableCategories();

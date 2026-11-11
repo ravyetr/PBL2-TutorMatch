@@ -102,6 +102,7 @@ public:
 
     Q_INVOKABLE QVariantList qmlGetAllTutors();
     Q_INVOKABLE QVariantList qmlGetSmartMatches(int topK = 3);
+    Q_INVOKABLE QVariantList qmlSearchSmartMatches(const QVariantMap& criteriaMap, int topK = 5);
     Q_INVOKABLE QVariantList qmlGetStudentBookings();
     Q_INVOKABLE QVariantMap qmlGetStudentBookingMetrics(int studentId = 0);
     Q_INVOKABLE QVariantList qmlGetTutorBookings();
@@ -110,17 +111,14 @@ public:
     Q_INVOKABLE QVariantMap qmlGetAdminPlatformStats();
     Q_INVOKABLE QVariantList qmlGetAdminUsers(const QString& filter = "ALL", const QString& searchKeyword = "");
     Q_INVOKABLE QVariantMap qmlGetUserDetailsForAdmin(int userId);
-    Q_INVOKABLE bool qmlVerifyTutor(int tutorId, bool approve = true);
     Q_INVOKABLE bool qmlToggleUserLock(int userId);
     Q_INVOKABLE QVariantList qmlGetRecentConnections(int limit = 5);
-    Q_INVOKABLE QVariantList qmlGetPendingVerificationTutors();
     Q_INVOKABLE QVariantList qmlGetAllMatches();
     Q_INVOKABLE bool qmlAdminTerminateMatch(int bookingId);
     Q_INVOKABLE QVariantList qmlGetAllReviews();
     Q_INVOKABLE bool qmlDeleteReview(int reviewId);
 
     Q_INVOKABLE bool qmlToggleUserActiveStatus(int userId);
-    Q_INVOKABLE bool qmlVerifyTutorAccount(int tutorId);
     Q_INVOKABLE bool qmlToggleStudentScheduleSlot(int day, int slot);
     Q_INVOKABLE bool qmlToggleTutorScheduleSlot(int day, int slot);
     Q_INVOKABLE bool qmlBookLesson(int tutorId, int day, int slot);
@@ -134,7 +132,7 @@ public:
     Q_INVOKABLE QString getCommitmentVersion() const;
 
     // Tab 0 Student Profile & Timetable APIs
-    Q_INVOKABLE bool updateStudentProfile(const QString& name, const QString& email, int grade, const QString& targetSubject, double budget);
+    Q_INVOKABLE bool updateStudentProfile(const QString& name, const QString& email, int grade, const QString& targetSubject = "", double budget = 0.0);
     Q_INVOKABLE QVariantList getStudentWeeklySchedule(const QString& weekStartDateStr = "");
     Q_INVOKABLE QVariantList getWeeklyScheduleMatrix(const QString& weekStartDateStr = "");
     Q_INVOKABLE bool clearStudentBusySchedule();
@@ -224,7 +222,6 @@ public:
     // Admin Actions
     TutorMatch::AdminMetrics getAdminMetrics();
     std::vector<std::shared_ptr<TutorMatch::User>> getAllUsers();
-    bool verifyTutorAccount(int tutorId, std::string& outMsg);
     bool toggleUserActiveStatus(int userId, std::string& outMsg);
     bool deleteViolatingReview(int reviewId, std::string& outMsg);
 };

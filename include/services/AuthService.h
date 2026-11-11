@@ -35,6 +35,10 @@ public:
 
     bool registerStudent(const std::string& username, const std::string& password,
                          const std::string& fullName, const std::string& email,
+                         const std::string& gradeLevel, std::string& outError);
+
+    bool registerStudent(const std::string& username, const std::string& password,
+                         const std::string& fullName, const std::string& email,
                          const std::string& gradeLevel, const std::string& preferredSubject,
                          double maxBudget, std::string& outError);
 

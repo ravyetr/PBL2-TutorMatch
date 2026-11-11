@@ -54,8 +54,8 @@ Item {
             TimetableGrid {
                 id: timetable
                 Layout.fillWidth: true
-                Layout.preferredHeight: 480
-                Layout.minimumHeight: 440
+                Layout.preferredHeight: 560
+                Layout.minimumHeight: 480
             }
         }
     }

@@ -50,7 +50,9 @@ std::string SubjectTaxonomy::normalizeText(const std::string& input) {
     std::string s = stripAccents(input);
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
     for (char& c : s) {
-        if (c == '_' || c == '-' || c == '/' || c == ',' || c == '(' || c == ')' || c == ':') {
+        if (c == '_' || c == '-' || c == '/' || c == ',' || c == '(' || c == ')' ||
+            c == ':' || c == '&' || c == '+' || c == ';' || c == '*' || c == '?' ||
+            c == '!' || c == '#' || c == '[' || c == ']' || c == '{' || c == '}') {
             c = ' ';
         }
     }
@@ -76,33 +78,186 @@ static bool containsKeyword(const std::string& text, const std::string& kw) {
     return text.find(kw) != std::string::npos;
 }
 
+std::vector<CanonicalSubject> SubjectTaxonomy::getCanonicalSubjects(const std::string& subjectStr) {
+    std::vector<CanonicalSubject> result;
+    if (subjectStr.empty()) return result;
+
+    std::string norm = normalizeText(subjectStr);
+    if (norm.empty()) return result;
+
+    auto containsWordOrPhrase = [](const std::string& text, const std::string& phrase) -> bool {
+        if (phrase.empty() || text.empty()) return false;
+        size_t pos = 0;
+        while ((pos = text.find(phrase, pos)) != std::string::npos) {
+            bool leftOk = (pos == 0 || text[pos - 1] == ' ');
+            size_t end = pos + phrase.length();
+            bool rightOk = (end == text.length() || text[end] == ' ');
+            if (leftOk && rightOk) return true;
+            pos += 1;
+        }
+        return false;
+    };
+
+    // 1. MATH
+    bool hasMath = containsKeyword(norm, "math") || containsKeyword(norm, "calculus") ||
+                   containsKeyword(norm, "algebra") || containsKeyword(norm, "geometry") ||
+                   containsKeyword(norm, "giai tich") || containsKeyword(norm, "dai so") ||
+                   containsKeyword(norm, "hinh hoc");
+    if (!hasMath) {
+        size_t pos = 0;
+        while ((pos = norm.find("toan", pos)) != std::string::npos) {
+            bool leftOk = (pos == 0 || norm[pos - 1] == ' ');
+            size_t end = pos + 4;
+            bool rightOk = (end == norm.length() || norm[end] == ' ');
+            if (leftOk && rightOk) {
+                bool isAnToan = (pos >= 3 && norm.substr(pos - 3, 3) == "an ");
+                bool isHoanToan = (pos >= 5 && norm.substr(pos - 5, 5) == "hoan ");
+                if (!isAnToan && !isHoanToan) {
+                    hasMath = true;
+                    break;
+                }
+            }
+            pos += 1;
+        }
+    }
+    if (hasMath) result.push_back(CanonicalSubject::MATH);
+
+    // 2. PHYSICS
+    bool hasPhys = containsKeyword(norm, "physics") || containsKeyword(norm, "vat ly") ||
+                   containsKeyword(norm, "co hoc") || containsKeyword(norm, "quang hoc") ||
+                   containsKeyword(norm, "dien tu");
+    if (!hasPhys) {
+        size_t pos = 0;
+        while ((pos = norm.find("ly", pos)) != std::string::npos) {
+            bool leftOk = (pos == 0 || norm[pos - 1] == ' ');
+            size_t end = pos + 2;
+            bool rightOk = (end == norm.length() || norm[end] == ' ');
+            if (leftOk && rightOk) {
+                bool isDiaLy = (pos >= 4 && norm.substr(pos - 4, 4) == "dia ");
+                bool isTamLy = (pos >= 4 && norm.substr(pos - 4, 4) == "tam ");
+                bool isQuanLy = (pos >= 5 && norm.substr(pos - 5, 5) == "quan ");
+                bool isDaiLy = (pos >= 4 && norm.substr(pos - 4, 4) == "dai ");
+                bool isPhapLy = (pos >= 5 && norm.substr(pos - 5, 5) == "phap ");
+                bool isHocLy = (pos >= 4 && norm.substr(pos - 4, 4) == "hoc ");
+                if (!isDiaLy && !isTamLy && !isQuanLy && !isDaiLy && !isPhapLy && !isHocLy) {
+                    hasPhys = true;
+                    break;
+                }
+            }
+            pos += 1;
+        }
+    }
+    if (hasPhys) result.push_back(CanonicalSubject::PHYSICS);
+
+    // 3. CHEMISTRY
+    bool hasChem = containsWordOrPhrase(norm, "chemistry") || containsWordOrPhrase(norm, "hoa hoc") ||
+                   containsWordOrPhrase(norm, "hoa huu co") || containsWordOrPhrase(norm, "hoa vo co") ||
+                   containsWordOrPhrase(norm, "hoa");
+    if (hasChem) result.push_back(CanonicalSubject::CHEMISTRY);
+
+    // 4. ENGLISH
+    bool hasEng = containsKeyword(norm, "english") || containsKeyword(norm, "tieng anh") ||
+                  containsKeyword(norm, "ngoai ngu") || containsKeyword(norm, "ielts") ||
+                  containsKeyword(norm, "toeic") || containsKeyword(norm, "toefl");
+    if (hasEng) result.push_back(CanonicalSubject::ENGLISH);
+
+    // 5. COMPUTER_SCIENCE
+    bool hasCS = containsKeyword(norm, "computer science") || containsKeyword(norm, "tin hoc") ||
+                 containsKeyword(norm, "lap trinh") || containsKeyword(norm, "programming") ||
+                 containsKeyword(norm, "coding") || containsKeyword(norm, "c++") ||
+                 containsKeyword(norm, "python") || containsKeyword(norm, "cntt") ||
+                 containsWordOrPhrase(norm, "tin");
+    if (hasCS) result.push_back(CanonicalSubject::COMPUTER_SCIENCE);
+
+    // 6. BIOLOGY
+    bool hasBio = containsKeyword(norm, "biology") || containsKeyword(norm, "sinh hoc");
+    if (!hasBio) {
+        size_t pos = 0;
+        while ((pos = norm.find("sinh", pos)) != std::string::npos) {
+            bool leftOk = (pos == 0 || norm[pos - 1] == ' ');
+            size_t end = pos + 4;
+            bool rightOk = (end == norm.length() || norm[end] == ' ');
+            if (leftOk && rightOk) {
+                bool isHocSinh = (pos >= 4 && norm.substr(pos - 4, 4) == "hoc ");
+                if (!isHocSinh) {
+                    hasBio = true;
+                    break;
+                }
+            }
+            pos += 1;
+        }
+    }
+    if (hasBio) result.push_back(CanonicalSubject::BIOLOGY);
+
+    // 7. LITERATURE
+    bool hasLit = containsKeyword(norm, "literature") || containsKeyword(norm, "van hoc") ||
+                  containsKeyword(norm, "ngu van") || containsWordOrPhrase(norm, "van");
+    if (hasLit) result.push_back(CanonicalSubject::LITERATURE);
+
+    // 8. HISTORY
+    bool hasHist = containsWordOrPhrase(norm, "history") || containsWordOrPhrase(norm, "lich su") ||
+                   containsWordOrPhrase(norm, "su hoc");
+    if (!hasHist) {
+        size_t pos = 0;
+        while ((pos = norm.find("su", pos)) != std::string::npos) {
+            bool leftOk = (pos == 0 || norm[pos - 1] == ' ');
+            size_t end = pos + 2;
+            bool rightOk = (end == norm.length() || norm[end] == ' ');
+            if (leftOk && rightOk) {
+                bool isKySu = (pos >= 3 && norm.substr(pos - 3, 3) == "ky ");
+                bool isGiaoSu = (pos >= 5 && norm.substr(pos - 5, 5) == "giao ");
+                bool isLuatSu = (pos >= 5 && norm.substr(pos - 5, 5) == "luat ");
+                bool isBacSi = (pos >= 4 && norm.substr(pos - 4, 4) == "bac ");
+                if (!isKySu && !isGiaoSu && !isLuatSu && !isBacSi) {
+                    hasHist = true;
+                    break;
+                }
+            }
+            pos += 1;
+        }
+    }
+    if (hasHist) result.push_back(CanonicalSubject::HISTORY);
+
+    // 9. GEOGRAPHY
+    bool hasGeo = containsWordOrPhrase(norm, "geography") || containsWordOrPhrase(norm, "dia ly") ||
+                  containsWordOrPhrase(norm, "dia li") || containsWordOrPhrase(norm, "dia chat");
+    if (!hasGeo) {
+        size_t pos = 0;
+        while ((pos = norm.find("dia", pos)) != std::string::npos) {
+            bool leftOk = (pos == 0 || norm[pos - 1] == ' ');
+            size_t end = pos + 3;
+            bool rightOk = (end == norm.length() || norm[end] == ' ');
+            if (leftOk && rightOk) {
+                bool isDiaDiem = (end + 5 <= norm.length() && norm.substr(end, 5) == " diem");
+                bool isDiaChi = (end + 4 <= norm.length() && norm.substr(end, 4) == " chi");
+                bool isDiaPhuong = (end + 7 <= norm.length() && norm.substr(end, 7) == " phuong");
+                if (!isDiaDiem && !isDiaChi && !isDiaPhuong) {
+                    hasGeo = true;
+                    break;
+                }
+            }
+            pos += 1;
+        }
+    }
+    if (hasGeo) result.push_back(CanonicalSubject::GEOGRAPHY);
+
+    return result;
+}
+
 ParsedSubject SubjectTaxonomy::parseSubject(const std::string& subjectStr) {
     ParsedSubject res;
     res.rawInput = subjectStr;
     std::string norm = normalizeText(subjectStr);
+    if (norm.empty()) {
+        res.code = CanonicalSubject::OTHER;
+        res.canonicalCodeStr = "OTHER";
+        res.displayName = "Môn học khác";
+        return res;
+    }
 
-    if (containsKeyword(norm, "math") || containsKeyword(norm, "toan") || containsKeyword(norm, "calculus") ||
-        containsKeyword(norm, "algebra") || containsKeyword(norm, "geometry") || containsKeyword(norm, "giai tich") ||
-        containsKeyword(norm, "dai so") || containsKeyword(norm, "hinh hoc")) {
-        res.code = CanonicalSubject::MATH;
-    } else if (containsKeyword(norm, "physics") || containsKeyword(norm, "vat ly") || containsKeyword(norm, "co hoc") ||
-               containsKeyword(norm, "quang hoc") || containsKeyword(norm, "dien tu") || norm == "ly" || containsKeyword(norm, " ly ")) {
-        res.code = CanonicalSubject::PHYSICS;
-    } else if (containsKeyword(norm, "chemistry") || containsKeyword(norm, "hoa hoc") || containsKeyword(norm, "hoa huu co") ||
-               containsKeyword(norm, "hoa vo co") || norm == "hoa" || containsKeyword(norm, " hoa ")) {
-        res.code = CanonicalSubject::CHEMISTRY;
-    } else if (containsKeyword(norm, "english") || containsKeyword(norm, "tieng anh") || containsKeyword(norm, "ngoai ngu") ||
-               containsKeyword(norm, "ielts") || containsKeyword(norm, "toeic") || containsKeyword(norm, "toefl")) {
-        res.code = CanonicalSubject::ENGLISH;
-    } else if (containsKeyword(norm, "computer science") || containsKeyword(norm, "tin hoc") || containsKeyword(norm, "lap trinh") ||
-               containsKeyword(norm, "programming") || containsKeyword(norm, "coding") || containsKeyword(norm, "c++") ||
-               containsKeyword(norm, "python") || containsKeyword(norm, "it")) {
-        res.code = CanonicalSubject::COMPUTER_SCIENCE;
-    } else if (containsKeyword(norm, "biology") || containsKeyword(norm, "sinh hoc") || norm == "sinh" || containsKeyword(norm, " sinh ")) {
-        res.code = CanonicalSubject::BIOLOGY;
-    } else if (containsKeyword(norm, "literature") || containsKeyword(norm, "van hoc") || containsKeyword(norm, "ngu van") ||
-               norm == "van" || containsKeyword(norm, " van ")) {
-        res.code = CanonicalSubject::LITERATURE;
+    auto canonicals = getCanonicalSubjects(subjectStr);
+    if (!canonicals.empty()) {
+        res.code = canonicals.front();
     } else {
         res.code = CanonicalSubject::OTHER;
     }
@@ -155,6 +310,8 @@ std::string SubjectTaxonomy::getCanonicalCodeString(CanonicalSubject code) {
         case CanonicalSubject::COMPUTER_SCIENCE: return "COMPUTER_SCIENCE";
         case CanonicalSubject::BIOLOGY:          return "BIOLOGY";
         case CanonicalSubject::LITERATURE:       return "LITERATURE";
+        case CanonicalSubject::HISTORY:          return "HISTORY";
+        case CanonicalSubject::GEOGRAPHY:        return "GEOGRAPHY";
         default:                                 return "OTHER";
     }
 }
@@ -168,6 +325,8 @@ std::string SubjectTaxonomy::getDisplayName(CanonicalSubject code) {
         case CanonicalSubject::COMPUTER_SCIENCE: return "Tin học";
         case CanonicalSubject::BIOLOGY:          return "Sinh học";
         case CanonicalSubject::LITERATURE:       return "Văn học";
+        case CanonicalSubject::HISTORY:          return "Lịch sử";
+        case CanonicalSubject::GEOGRAPHY:        return "Địa lý";
         default:                                 return "Môn học khác";
     }
 }
@@ -178,63 +337,67 @@ std::string SubjectTaxonomy::canonicalCodeToDisplay(const std::string& codeOrTex
 }
 
 bool SubjectTaxonomy::matchesFilter(const std::string& tutorSubjectStr, const std::string& filterSubjectStr) {
+    if (tutorSubjectStr.empty() || filterSubjectStr.empty()) {
+        return false;
+    }
+
     std::string normFilter = normalizeText(filterSubjectStr);
-    if (normFilter.empty() || normFilter == "tat ca mon" || normFilter == "tat ca" || filterSubjectStr == "Tất cả môn") {
-        return true;
-    }
-
-    ParsedSubject filterParsed = parseSubject(filterSubjectStr);
-    ParsedSubject tutorParsed = parseSubject(tutorSubjectStr);
-
-    if (filterParsed.code != CanonicalSubject::OTHER && tutorParsed.code != CanonicalSubject::OTHER) {
-        if (filterParsed.code == tutorParsed.code) {
-            return true;
-        }
-    }
-
     std::string normTutor = normalizeText(tutorSubjectStr);
-    if (normTutor.find(normFilter) != std::string::npos) {
-        return true;
+    if (normFilter.empty() || normTutor.empty()) {
+        return false;
+    }
+
+    auto filterSubjects = getCanonicalSubjects(filterSubjectStr);
+    if (filterSubjects.empty()) {
+        return false;
+    }
+
+    auto tutorSubjects = getCanonicalSubjects(tutorSubjectStr);
+    if (tutorSubjects.empty()) {
+        return false;
+    }
+
+    for (const auto& fs : filterSubjects) {
+        for (const auto& ts : tutorSubjects) {
+            if (fs == ts) {
+                return true;
+            }
+        }
     }
 
     return false;
 }
 
-double SubjectTaxonomy::calculateAffinityScore(const Student& student, const Tutor& tutor) {
-    std::string prefSubjStr = student.getPreferredSubject();
-    if (prefSubjStr.empty()) {
+double SubjectTaxonomy::calculateAffinityScore(const std::string& targetSubject, int targetGrade, const Tutor& tutor) {
+    if (targetSubject.empty()) {
         return 100.0;
     }
 
-    ParsedSubject studentSubj = parseSubject(prefSubjStr);
+    if (!matchesFilter(tutor.getSubjectSpecialty(), targetSubject)) {
+        return 0.0;
+    }
+
+    ParsedSubject studentSubj = parseSubject(targetSubject);
     ParsedSubject tutorSubj = parseSubject(tutor.getSubjectSpecialty());
 
-    int studentTargetGrade = student.getGradeLevel();
+    int studentTargetGrade = targetGrade;
     if (studentSubj.minGrade == studentSubj.maxGrade && studentSubj.minGrade >= 1 && studentSubj.minGrade <= 12) {
         studentTargetGrade = studentSubj.minGrade;
     }
 
-    if (studentSubj.code == tutorSubj.code && studentSubj.code != CanonicalSubject::OTHER) {
-        double score = 80.0;
-
-        if (studentTargetGrade >= tutorSubj.minGrade && studentTargetGrade <= tutorSubj.maxGrade) {
-            score += 20.0; // 100.0 Total
-        } else if (std::abs(studentTargetGrade - tutorSubj.minGrade) <= 1 || std::abs(studentTargetGrade - tutorSubj.maxGrade) <= 1) {
-            score += 10.0; // 90.0 Total
-        } else {
-            score += 5.0;  // 85.0 Total
-        }
-        return std::min(100.0, score);
+    double score = 80.0;
+    if (studentTargetGrade >= tutorSubj.minGrade && studentTargetGrade <= tutorSubj.maxGrade) {
+        score += 20.0; // 100.0 Total
+    } else if (std::abs(studentTargetGrade - tutorSubj.minGrade) <= 1 || std::abs(studentTargetGrade - tutorSubj.maxGrade) <= 1) {
+        score += 10.0; // 90.0 Total
+    } else {
+        score += 5.0;  // 85.0 Total
     }
+    return std::min(100.0, score);
+}
 
-    std::string normTutor = normalizeText(tutor.getSubjectSpecialty());
-    std::string normPref = normalizeText(prefSubjStr);
-
-    if (!normPref.empty() && normTutor.find(normPref) != std::string::npos) {
-        return 70.0;
-    }
-
-    return 20.0;
+double SubjectTaxonomy::calculateAffinityScore(const Student& student, const Tutor& tutor) {
+    return calculateAffinityScore("", student.getGradeLevel(), tutor);
 }
 
 std::vector<std::pair<std::string, std::string>> SubjectTaxonomy::getAvailableCategories() {
@@ -246,7 +409,9 @@ std::vector<std::pair<std::string, std::string>> SubjectTaxonomy::getAvailableCa
         {"english", "Tiếng Anh"},
         {"computer_science", "Tin học"},
         {"biology", "Sinh học"},
-        {"literature", "Văn học"}
+        {"literature", "Văn học"},
+        {"history", "Lịch sử"},
+        {"geography", "Địa lý"}
     };
 }
 

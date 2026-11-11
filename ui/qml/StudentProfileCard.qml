@@ -13,11 +13,6 @@ Rectangle {
 
     property var profile: (typeof guiBridge !== "undefined" && guiBridge.currentStudentProfile) ? guiBridge.currentStudentProfile : ({})
 
-    function formatCurrency(amount) {
-        if (!amount || isNaN(amount)) return "0 VND";
-        return amount.toLocaleString(Qt.locale("vi_VN"), 'f', 0) + " VND / buổi";
-    }
-
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 20
@@ -53,7 +48,7 @@ Rectangle {
                         color: Theme.textDark
                     }
                     Text {
-                        text: "@" + (studentProfileCard.profile.username || "student") + "  |  ID: " + (studentProfileCard.profile.id || 0)
+                        text: "Học viên  |  ID: " + (studentProfileCard.profile.id || 0)
                         font.pixelSize: 12
                         color: Theme.textMuted
                     }
@@ -107,7 +102,7 @@ Rectangle {
             color: Theme.cardBorder
         }
 
-        // Profile Details Grid
+        // Stable Profile Details Grid (Search-specific criteria removed)
         GridLayout {
             columns: 4
             rowSpacing: 12
@@ -124,22 +119,22 @@ Rectangle {
             // Grade Level
             ColumnLayout {
                 spacing: 2
-                Text { text: "Khối Lớp Dang Học:"; font.pixelSize: 11; color: Theme.textMuted }
+                Text { text: "Khối Lớp Đang Học:"; font.pixelSize: 11; color: Theme.textMuted }
                 Text { text: (studentProfileCard.profile.gradeLevel === 0 ? "Khác" : "Lớp " + (studentProfileCard.profile.gradeLevel || 10)); font.bold: true; font.pixelSize: 13; color: Theme.textDark }
             }
 
-            // Preferred Subject
+            // Username
             ColumnLayout {
                 spacing: 2
-                Text { text: "Môn Học Mục Tiêu:"; font.pixelSize: 11; color: Theme.textMuted }
-                Text { text: studentProfileCard.profile.preferredSubject || "Chưa chọn"; font.bold: true; font.pixelSize: 13; color: Theme.textDark }
+                Text { text: "Tên Tài Khoản:"; font.pixelSize: 11; color: Theme.textMuted }
+                Text { text: "@" + (studentProfileCard.profile.username || "student"); font.bold: true; font.pixelSize: 13; color: Theme.textDark }
             }
 
-            // Max Budget per Session
+            // Platform Role & Integrity
             ColumnLayout {
                 spacing: 2
-                Text { text: "Học Phí Tối Đa Cho Phép:"; font.pixelSize: 11; color: Theme.textMuted }
-                Text { text: studentProfileCard.formatCurrency(studentProfileCard.profile.maxBudget); font.bold: true; font.pixelSize: 13; color: "#d97706" }
+                Text { text: "Loại Tài Khoản:"; font.pixelSize: 11; color: Theme.textMuted }
+                Text { text: "Học viên nền tảng"; font.bold: true; font.pixelSize: 13; color: "#2b6cb0" }
             }
         }
     }

@@ -41,8 +41,6 @@ Item {
             nameInput.text = data.fullName || ""
             emailInput.text = data.email || ""
             gradeInput.text = (data.gradeLevel || 10).toString()
-            subjectInput.text = data.preferredSubject || ""
-            budgetInput.text = (data.maxBudget || 200000).toString()
         }
 
         profileEditModal.visible = true
@@ -206,35 +204,20 @@ Item {
                     background: Rectangle { color: Theme.bgApp; radius: 6; border.color: gradeInput.activeFocus ? Theme.sidebarBg : Theme.cardBorder }
                 }
 
-                // Subject: Tutor Specialty or Student Target
+                // Subject: Tutor Specialty Only
                 Text {
-                    text: isTutor ? "Môn chuyên dạy (*):" : "Môn Học Mục Tiêu (*):"
+                    visible: isTutor
+                    text: "Môn chuyên dạy (*):"
                     font.bold: true
                     color: Theme.textDark
                 }
                 TextField {
                     id: subjectInput
+                    visible: isTutor
                     Layout.fillWidth: true
                     color: Theme.textDark
-                    placeholderText: isTutor ? "Nhập môn giảng dạy (vd: Toán 12 - Luyện thi)..." : "Nhập môn học mục tiêu..."
+                    placeholderText: "Nhập môn giảng dạy (vd: Toán 12 - Luyện thi)..."
                     background: Rectangle { color: Theme.bgApp; radius: 6; border.color: subjectInput.activeFocus ? Theme.sidebarBg : Theme.cardBorder }
-                }
-
-                // Student: Max Budget
-                Text {
-                    visible: !isTutor
-                    text: "Học Phí Tối Đa (VNĐ) (*):"
-                    font.bold: true
-                    color: Theme.textDark
-                }
-                TextField {
-                    id: budgetInput
-                    visible: !isTutor
-                    Layout.fillWidth: true
-                    color: Theme.textDark
-                    placeholderText: "Nhập mức ngân sách..."
-                    validator: DoubleValidator { bottom: 1000; top: 10000000; decimals: 0 }
-                    background: Rectangle { color: Theme.bgApp; radius: 6; border.color: budgetInput.activeFocus ? Theme.sidebarBg : Theme.cardBorder }
                 }
 
                 // Tutor: Hourly Rate
@@ -328,9 +311,8 @@ Item {
                                     profileEditModal.errorMessage = guiBridge.statusMessage || "Lỗi cập nhật hồ sơ gia sư!";
                                 }
                             } else {
-                                var gradeVal = parseInt(gradeInput.text) || 0;
-                                var budgetVal = parseFloat(budgetInput.text) || 0.0;
-                                var ok = guiBridge.updateStudentProfile(nameInput.text, emailInput.text, gradeVal, subjectInput.text, budgetVal);
+                                var gradeVal = parseInt(gradeInput.text) || 10;
+                                var ok = guiBridge.updateStudentProfile(nameInput.text, emailInput.text, gradeVal);
                                 if (ok) {
                                     profileEditModal.visible = false;
                                 } else {

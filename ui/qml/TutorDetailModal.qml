@@ -14,15 +14,54 @@ Item {
     signal bookCourseRequested(var tutor)
 
     function openWithTutorId(tutorId) {
+        availableSlotMap = {}
+        tutorDetail = {}
+        if (contentFlickable) {
+            contentFlickable.contentY = 0
+        }
         if (typeof guiBridge !== "undefined") {
-            tutorDetail = guiBridge.getTutorDetail(tutorId)
+            var detail = guiBridge.getTutorDetail(tutorId)
+            if (detail) {
+                if (!detail.availableSlots || detail.availableSlots.length === 0) {
+                    detail.availableSlots = guiBridge.getTutorAvailableSlots(tutorId)
+                }
+                tutorDetail = detail
+            } else {
+                tutorDetail = {}
+            }
         }
         rebuildSlotMap()
         tutorDetailModal.visible = true
     }
 
+    function openWithTutor(tutor) {
+        if (!tutor) return
+        var tid = tutor.tutorId || tutor.id || 0
+        if (tid > 0) {
+            openWithTutorId(tid)
+        } else {
+            availableSlotMap = {}
+            tutorDetail = tutor
+            if (contentFlickable) {
+                contentFlickable.contentY = 0
+            }
+            rebuildSlotMap()
+            tutorDetailModal.visible = true
+        }
+    }
+
+    onTutorDetailChanged: {
+        rebuildSlotMap()
+    }
+
     function rebuildSlotMap() {
-        var slots = (tutorDetail && tutorDetail.availableSlots) ? tutorDetail.availableSlots : []
+        var slots = []
+        if (tutorDetail && tutorDetail.availableSlots) {
+            slots = tutorDetail.availableSlots
+        } else if (tutorDetail && (tutorDetail.tutorId || tutorDetail.id) && typeof guiBridge !== "undefined") {
+            var tid = tutorDetail.tutorId || tutorDetail.id
+            slots = guiBridge.getTutorAvailableSlots(tid)
+        }
         var map = {}
         for (var i = 0; i < slots.length; ++i) {
             var s = slots[i]
@@ -32,7 +71,7 @@ Item {
     }
 
     function isSlotAvailable(dayIdx, slotIdx) {
-        return availableSlotMap[dayIdx + ":" + slotIdx] === true
+        return Boolean(availableSlotMap && availableSlotMap[dayIdx + ":" + slotIdx] === true)
     }
 
     // Modal Background Overlay Dimming
@@ -145,22 +184,6 @@ Item {
                                         color: Theme.textDark
                                         elide: Text.ElideRight
                                     }
-                                    Rectangle {
-                                        visible: tutorDetail.isVerified === true
-                                        width: 76
-                                        height: 20
-                                        radius: 4
-                                        color: "#132719"
-                                        border.color: "#52c41a"
-                                        border.width: 1
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "Đã xác minh"
-                                            font.pixelSize: 10
-                                            font.bold: true
-                                            color: "#52c41a"
-                                        }
-                                    }
                                 }
 
                                 Text {
@@ -231,6 +254,32 @@ Item {
                             font.bold: true
                             font.pixelSize: 13
                             color: Theme.textDark
+                        }
+
+                        // Empty availability notification banner
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 34
+                            radius: 6
+                            color: Theme.bgApp
+                            border.color: "#faad14"
+                            border.width: 1
+                            visible: (!tutorDetail.availableSlots || tutorDetail.availableSlots.length === 0)
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 8
+                                Text {
+                                    text: "⚠️"
+                                    font.pixelSize: 13
+                                }
+                                Text {
+                                    text: "Gia sư chưa cập nhật thời gian rảnh hàng tuần."
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                    color: "#d48806"
+                                }
+                            }
                         }
 
                         Rectangle {
@@ -322,7 +371,7 @@ Item {
 
                                             Rectangle {
                                                 property int dayIdx: index
-                                                property bool isAvailable: tutorDetailModal.isSlotAvailable(dayIdx, slotIdx)
+                                                property bool isAvailable: Boolean(tutorDetailModal.availableSlotMap && tutorDetailModal.availableSlotMap[dayIdx + ":" + slotIdx])
 
                                                 Layout.fillWidth: true
                                                 height: 26
@@ -385,7 +434,7 @@ Item {
                                     Text {
                                         text: ((tutorDetail.availableSlots || []).length > 0) ?
                                               ("Tổng số: " + (tutorDetail.availableSlots || []).length + " ca rảnh/tuần") :
-                                              "Gia sư chưa cập nhật lịch rảnh"
+                                              "Gia sư chưa cập nhật thời gian rảnh hàng tuần."
                                         font.pixelSize: 11
                                         font.bold: true
                                         color: "#d97706"

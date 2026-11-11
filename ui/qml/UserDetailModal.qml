@@ -39,8 +39,8 @@ Rectangle {
 
     // Modal Card Dialog
     Rectangle {
-        width: Math.min(840, parent.width - 40)
-        height: Math.min(640, parent.height - 40)
+        width: Math.min(860, parent.width - 40)
+        height: Math.min(680, parent.height - 40)
         anchors.centerIn: parent
         color: Theme.cardBg
         radius: 12
@@ -130,26 +130,6 @@ Rectangle {
                                 font.pixelSize: 10
                                 font.bold: true
                                 color: (userDetail.profile && userDetail.profile.isActive) ? "#096dd9" : "#cf1322"
-                            }
-                        }
-
-                        // Verification Badge for Tutor
-                        Rectangle {
-                            visible: (userDetail && userDetail.found !== false && userDetail.profile && userDetail.profile.roleKey === "TUTOR")
-                            height: 20
-                            implicitWidth: verifyLabel.implicitWidth + 12
-                            radius: 4
-                            color: (userDetail.profile && userDetail.profile.isVerified) ? "#f6ffed" : "#fffbe6"
-                            border.color: (userDetail.profile && userDetail.profile.isVerified) ? "#b7eb8f" : "#ffe58f"
-                            border.width: 1
-
-                            Text {
-                                id: verifyLabel
-                                anchors.centerIn: parent
-                                text: (userDetail.profile && userDetail.profile.isVerified) ? "ĐÃ XÁC MINH" : "CHƯA XÁC MINH"
-                                font.pixelSize: 10
-                                font.bold: true
-                                color: (userDetail.profile && userDetail.profile.isVerified) ? "#389e0d" : "#d48806"
                             }
                         }
 
@@ -406,11 +386,8 @@ Rectangle {
                                     Text { text: "Khối lớp học:"; font.pixelSize: 12; color: Theme.textMuted }
                                     Text { text: userDetail.profile ? ("Lớp " + userDetail.profile.gradeDisplay) : ""; font.bold: true; font.pixelSize: 12; color: Theme.textDark }
 
-                                    Text { text: "Môn học yêu cầu:"; font.pixelSize: 12; color: Theme.textMuted }
-                                    Text { text: userDetail.profile ? userDetail.profile.preferredSubject : ""; font.bold: true; font.pixelSize: 12; color: Theme.textDark }
-
-                                    Text { text: "Ngân sách tối đa:"; font.pixelSize: 12; color: Theme.textMuted }
-                                    Text { text: userDetail.profile ? (userDetail.profile.maxBudget + " đ/giờ") : ""; font.bold: true; font.pixelSize: 12; color: Theme.textDark }
+                                    Text { text: "Cơ chế ghép gia sư:"; font.pixelSize: 12; color: Theme.textMuted }
+                                    Text { text: "Tìm kiếm SmartMatch độc lập theo từng lượt"; font.pixelSize: 12; color: Theme.textDark }
                                 }
 
                                 // Tutor Specific Profile Fields
@@ -432,9 +409,6 @@ Rectangle {
                                         Text { text: userDetail.profile ? (userDetail.profile.ratingFormatted + " ★") : ""; font.bold: true; font.pixelSize: 12; color: "#D97706" }
                                         Text { text: userDetail.profile ? ("(" + userDetail.profile.totalReviews + " đánh giá)") : ""; font.pixelSize: 11; color: Theme.textMuted }
                                     }
-
-                                    Text { text: "Trạng thái xác minh:"; font.pixelSize: 12; color: Theme.textMuted }
-                                    Text { text: userDetail.profile ? userDetail.profile.verifyStatusText : ""; font.bold: true; font.pixelSize: 12; color: (userDetail.profile && userDetail.profile.isVerified) ? "#389e0d" : "#d48806" }
 
                                     Text { text: "Giới thiệu bản thân (Bio):"; font.pixelSize: 12; color: Theme.textMuted; Layout.alignment: Qt.AlignTop }
                                     Text {
@@ -524,20 +498,23 @@ Rectangle {
                                         radius: 4
                                         color: (modelData.status === "ACCEPTED") ? "#132719" :
                                                (modelData.status === "COMPLETED") ? "#e6f7ff" :
+                                               (modelData.status === "EARLY_TERMINATED") ? "#fff7e6" :
                                                (modelData.status === "CANCELLED" || modelData.status === "REJECTED") ? "#fff1f0" : "#fffbe6"
                                         border.color: (modelData.status === "ACCEPTED") ? "#52c41a" :
                                                       (modelData.status === "COMPLETED") ? "#91d5ff" :
+                                                      (modelData.status === "EARLY_TERMINATED") ? "#ffa940" :
                                                       (modelData.status === "CANCELLED" || modelData.status === "REJECTED") ? "#ffa39e" : "#ffe58f"
                                         border.width: 1
 
                                         Text {
                                             id: connStatusText
                                             anchors.centerIn: parent
-                                            text: modelData.statusText
+                                            text: (modelData.status === "EARLY_TERMINATED") ? "KẾT THÚC SỚM" : modelData.statusText
                                             font.pixelSize: 10
                                             font.bold: true
                                             color: (modelData.status === "ACCEPTED") ? "#52c41a" :
                                                    (modelData.status === "COMPLETED") ? "#096dd9" :
+                                                   (modelData.status === "EARLY_TERMINATED") ? "#d46b08" :
                                                    (modelData.status === "CANCELLED" || modelData.status === "REJECTED") ? "#cf1322" : "#d48806"
                                         }
                                     }

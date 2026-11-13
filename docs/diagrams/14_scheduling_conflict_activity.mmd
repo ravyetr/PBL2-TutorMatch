@@ -1,0 +1,33 @@
+graph TD
+    %% =========================================================================
+    %% DIAGRAM 14: 56-SLOT BITWISE COLLISION CHECK & SCHEDULING ACTIVITY
+    %% =========================================================================
+    title["<b>QUY TRÌNH KIỂM TRA VA CHẠM LỊCH BẰNG MẶT NẠ NHỊ PHÂN 56 CA (SCHEDULEGUARD)</b>"]
+
+    Start([Bắt đầu: Học viên yêu cầu đặt lịch các ca học]) --> Input[Nhận danh sách ca: dow_i, slot_i và gia sư targetTutor]
+
+    Input --> SanitizeTutor[Lấy scheduleBitmask của Gia sư và khử bit thừa: cleanTutor = mask & 0x00FFFFFFFFFFFFFFULL]
+    Input --> BuildReqMask[Khởi tạo requestedMask = 0ULL]
+
+    BuildReqMask --> LoopSlots{Còn ca học nào trong danh sách?}
+    LoopSlots -- Có --> CalcSlot[Tính bitOffset = dayIndex * 8 + slotIndex]
+    CalcSlot --> BitOr[requestedMask |= (1ULL << bitOffset)]
+    BitOr --> LoopSlots
+    LoopSlots -- Hết --> CheckSanitizeReq[cleanReq = requestedMask & 0x00FFFFFFFFFFFFFFULL]
+
+    CheckSanitizeReq --> CheckCoverage{cleanTutor & cleanReq == cleanReq ?<br/>Gia sư có rảnh tất cả ca này không?}
+    CheckCoverage -- "Không (Thiếu ca)" --> RejectNotAvailable[Báo lỗi: Gia sư không rảnh vào các ca học yêu cầu] --> FinishFail([Thất bại: Không tạo yêu cầu])
+
+    CheckCoverage -- "Có (Đủ ca)" --> QueryActiveBookings[Truy vấn ICourseBookingRepository lấy danh sách khóa ACCEPTED của gia sư]
+    QueryActiveBookings --> BuildActiveMask[Khởi tạo activeConflictMask = 0ULL từ các khóa học đang diễn ra trong khoảng thời gian]
+
+    BuildActiveMask --> ConflictCheck{activeConflictMask & cleanReq != 0 ?<br/>Có trùng với buổi dạy nào đã duyệt?}
+    ConflictCheck -- "Có xung đột" --> RejectConflict[Báo lỗi: Trùng lịch với một khóa học khác đang diễn ra của gia sư] --> FinishFail
+
+    ConflictCheck -- "Không xung đột" --> CreateBooking[Hợp lệ! Tạo CourseBooking mới với status = PENDING]
+    CreateBooking --> FinishSuccess([Thành công: Yêu cầu được gửi đến Gia sư])
+
+    style CheckCoverage fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    style ConflictCheck fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    style FinishFail fill:#ffebee,stroke:#c62828,stroke-width:2px;
+    style FinishSuccess fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;

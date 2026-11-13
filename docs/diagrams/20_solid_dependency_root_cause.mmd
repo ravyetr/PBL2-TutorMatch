@@ -1,0 +1,61 @@
+graph TD
+    %% =========================================================================
+    %% DIAGRAM 20: SOLID COMPLIANCE & ROOT CAUSE MAP
+    %% =========================================================================
+    title["<b>BẢN ĐỒ NGUYÊN NHÂN GỐC RỄ & TUÂN THỦ CÁC NGUYÊN LÝ SOLID</b>"]
+
+    subgraph Architectural_Root_Causes ["Nguyên Nhân Gốc Rễ Kiến Trúc (Root Causes)"]
+        RC1["<b>RC-1: Lịch sử phân tầng tiến hóa từng phần</b><br/>Ban đầu BookingService ôm đồm Review (ADR-003 đã tách ReviewService nhưng còn mã tàn dư)"]
+        RC2["<b>RC-2: Tư duy cơ sở dữ liệu tệp đơn giản</b><br/>Không có Transaction Coordinator cấp DBMS; phải dựa vào Compensating Rollback (ADR-007) và đồng bộ khởi động"]
+        RC3["<b>RC-3: Ranh giới Presentation Controller</b><br/>GUIBridge giữ vai trò Mediator ôm nhiều phương thức Q_INVOKABLE (nhưng đã ủy quyền sạch sẽ cho Services)"]
+    end
+
+    subgraph SOLID_Principles ["Đánh Giá Tuân Thủ 5 Nguyên Lý SOLID"]
+        subgraph SRP_Sub ["S — Single Responsibility"]
+            SRP_Good["✅ Services & Serializers chia tách trách nhiệm rõ ràng"]
+            SRP_Issue["⚠️ BookingService còn giữ các phương thức Review thừa (P1 finding)"]
+        end
+
+        subgraph OCP_Sub ["O — Open / Closed"]
+            OCP_Good["✅ MatchingEngine mở rộng qua IMatchingStrategy"]
+            OCP_Good2["✅ UserRole & SerializerUtils hỗ trợ đa hình"]
+        end
+
+        subgraph LSP_Sub ["L — Liskov Substitution"]
+            LSP_Good["✅ Student, Tutor, Admin thay thế hoàn hảo cho User base"]
+            LSP_Good2["✅ Virtual methods getRoleString(), displayProfile() tôn trọng hợp đồng"]
+        end
+
+        subgraph ISP_Sub ["I — Interface Segregation"]
+            ISP_Good["✅ IUserRepository, ICourseBookingRepository, IReviewRepository độc lập"]
+            ISP_Good2["✅ Client chỉ phụ thuộc vào Repository mình cần"]
+        end
+
+        subgraph DIP_Sub ["D — Dependency Inversion"]
+            DIP_Good["✅ Services phụ thuộc vào Repository Interfaces (Abstractions)"]
+            DIP_Good2["✅ GUI-Only: Đã loại bỏ hoàn toàn rò rỉ dbEngine từ CLI cũ"]
+            DIP_Issue["ℹ️ Composition Root trong gui_main.cpp liên kết các concrete classes"]
+        end
+    end
+
+    subgraph Improvements ["Lộ Trình Tối Thiểu Hóa (Minimal Refactoring Roadmap)"]
+        P1_Clean["<b>Ưu tiên P1:</b> Rút sạch 3 hàm review thừa khỏi BookingService và loại bỏ reviewRepo khỏi BookingService"]
+        DIP_Clean["<b>Ưu tiên P2:</b> Tách nhỏ GUIBridge thành các Sub-Controllers chuyên biệt theo Role (Student/Tutor/Admin)"]
+    end
+
+    RC1 -.-> SRP_Issue
+    RC2 -.-> DIP_Good
+    RC3 -.-> DIP_Issue
+
+    SRP_Issue ==> P1_Clean
+    DIP_Issue ==> DIP_Clean
+
+    style SRP_Good fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px;
+    style OCP_Good,OCP_Good2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px;
+    style LSP_Good,LSP_Good2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px;
+    style ISP_Good,ISP_Good2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px;
+    style DIP_Good,DIP_Good2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px;
+    style SRP_Issue fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
+    style DIP_Issue fill:#e3f2fd,stroke:#1976d2,stroke-width:1px;
+    style P1_Clean fill:#fbe9e7,stroke:#d84315,stroke-width:2px;
+    style DIP_Clean fill:#ede7f6,stroke:#512da8,stroke-width:2px;

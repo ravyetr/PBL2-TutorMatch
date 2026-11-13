@@ -369,8 +369,8 @@ Rectangle {
                                     rowSpacing: 6
                                     columnSpacing: 20
 
-                                    Text { text: "Cấp độ phân quyền:"; font.pixelSize: 12; color: Theme.textMuted }
-                                    Text { text: userDetail.profile ? ("Level " + (userDetail.profile.permissionLevel !== undefined ? userDetail.profile.permissionLevel : 1) + " (Toàn quyền quản trị)") : ""; font.bold: true; font.pixelSize: 12; color: Theme.textDark }
+                                    Text { text: "Quyền hạn quản trị:"; font.pixelSize: 12; color: Theme.textMuted }
+                                    Text { text: "Toàn quyền quản trị hệ thống (Root Admin)"; font.bold: true; font.pixelSize: 12; color: Theme.textDark }
 
                                     Text { text: "Phạm vi quản lý:"; font.pixelSize: 12; color: Theme.textMuted }
                                     Text { text: "Người dùng, Thời khóa biểu, Kết nối, Khiếu nại & Kiểm duyệt"; font.pixelSize: 12; color: Theme.textDark }

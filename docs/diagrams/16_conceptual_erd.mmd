@@ -1,0 +1,62 @@
+erDiagram
+    %% =========================================================================
+    %% DIAGRAM 16: CONCEPTUAL ENTITY RELATIONSHIP DIAGRAM (ERD)
+    %% =========================================================================
+    title CONCEPTUAL ENTITY RELATIONSHIP DIAGRAM
+
+    USER {
+        int id PK "Mã định danh duy nhất"
+        string username "Tên đăng nhập"
+        string fullName "Họ và tên hiển thị"
+        string email "Thư điện tử"
+        string role "Vai trò: STUDENT, TUTOR, ADMIN"
+        bool isActive "Trạng thái hoạt động"
+    }
+
+    STUDENT {
+        int gradeLevel "Khối lớp học (1-12)"
+        uint64 scheduleBitmask "Lịch bận/rảnh cá nhân tuần"
+    }
+
+    TUTOR {
+        string subjectSpecialty "Chuyên môn giảng dạy"
+        double hourlyRate "Học phí đề xuất mỗi buổi"
+        double rating "Điểm đánh giá trung bình (1.0-5.0)"
+        int totalReviews "Tổng số lượt đánh giá đã nhận"
+        double totalEarnings "Tổng thu nhập giảng dạy tích lũy"
+        uint64 scheduleBitmask "Lịch rảnh giảng dạy tuần"
+    }
+
+    ADMIN {
+        string permissions "Toàn quyền quản trị hệ thống (Root Admin)"
+    }
+
+    COURSE_BOOKING {
+        int id PK "Mã khóa học định kỳ"
+        string subject "Môn học đăng ký"
+        double hourlyRate "Học phí thỏa thuận"
+        string startDate "Ngày bắt đầu khóa học"
+        int weeksCount "Thời lượng (4, 8, 12 tuần)"
+        string status "Trạng thái: PENDING, ACCEPTED, REJECTED, COMPLETED, CANCELLED, EARLY_TERMINATED"
+        string weeklySchedule "Lịch các ca học cố định trong tuần"
+        string commitmentVersion "Phiên bản cam kết: COMMITMENT_V1"
+    }
+
+    REVIEW {
+        int id PK "Mã bản ghi đánh giá"
+        int ratingScore "Điểm đánh giá sao (1-5)"
+        string comment "Nội dung nhận xét"
+        string createdAt "Ngày gửi đánh giá"
+    }
+
+    %% Kế thừa thực thể
+    USER ||--o| STUDENT : "is a"
+    USER ||--o| TUTOR : "is a"
+    USER ||--o| ADMIN : "is a"
+
+    %% Quan hệ giữa các thực thể
+    STUDENT ||--o{ COURSE_BOOKING : "gửi yêu cầu đặt (1..N)"
+    TUTOR ||--o{ COURSE_BOOKING : "giảng dạy khóa học (1..N)"
+    COURSE_BOOKING ||--o| REVIEW : "nhận đánh giá sau hoàn tất (1..0..1)"
+    STUDENT ||--o{ REVIEW : "viết nhận xét (1..N)"
+    TUTOR ||--o{ REVIEW : "nhận nhận xét (1..N)"

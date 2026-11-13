@@ -1,0 +1,81 @@
+graph LR
+    %% =========================================================================
+    %% DIAGRAM 03: DIRECTORY AND MODULE STRUCTURE
+    %% =========================================================================
+    title["<b>CẤU TRÚC THƯ MỤC VÀ PHÂN CHIA MODULE (DIRECTORY & MODULE STRUCTURE)</b>"]
+
+    Root["📁 TutorMatch/ (Project Root)"]
+
+    %% Cấu hình gốc
+    Root --> CMake["📄 CMakeLists.txt<br/>3 Targets: GUI, Tests, Inspector"]
+    Root --> Presets["📄 CMakePresets.json<br/>Presets: default, release"]
+    Root --> Readme["📄 README.md<br/>Tài liệu hướng dẫn Clone-and-Run"]
+
+    %% Thư mục include
+    subgraph IncDir ["📁 include/ (Header Files)"]
+        IncPres["📁 presentation/<br/>└── bridges/GUIBridge.h"]
+        IncBus["📁 business/<br/>├── domain/ (User.h, CourseBooking.h...)<br/>├── services/ (6 Services .h)<br/>├── matching/ (MatchingEngine.h...)<br/>└── algorithms/ (ScheduleGuard.h, AVLTree.h...)"]
+        IncDAL["📁 data_access/<br/>├── repositories/ (IRepository.h, File*Repo.h)<br/>├── serializers/ (*Serializer.h)<br/>└── storage/ (MockDatabaseEngine.h...)"]
+    end
+    Root --> IncDir
+
+    %% Thư mục src
+    subgraph SrcDir ["📁 src/ (Implementation Files)"]
+        SrcPres["📁 presentation/<br/>├── gui_main.cpp<br/>└── bridges/GUIBridge.cpp"]
+        SrcBus["📁 business/<br/>├── domain/ (User.cpp, DateUtils.cpp)<br/>├── services/ (6 Services .cpp)<br/>├── matching/ (MatchingEngine.cpp...)<br/>└── algorithms/ (ScheduleGuard.cpp)"]
+        SrcDAL["📁 data_access/<br/>├── repositories/ (File*Repo.cpp)<br/>├── serializers/ (*Serializer.cpp)<br/>└── storage/ (MockDatabaseEngine.cpp...)"]
+        SrcTools["📁 tools/<br/>└── inspect_main.cpp"]
+    end
+    Root --> SrcDir
+
+    %% Thư mục ui
+    subgraph UIDir ["📁 ui/qml/ (Qt Quick Presentation)"]
+        QMLViews["📄 Views (15 files):<br/>LoginView, StudentViews, TutorViews, AdminViews"]
+        QMLModals["📄 Modals (5 files):<br/>BookingModal, ReviewModal, DetailModals..."]
+        QMLComponents["📄 Components (7 files):<br/>TimetableGrid, TutorCard, Theme.qml, qmldir..."]
+    end
+    Root --> UIDir
+
+    %% Thư mục data
+    subgraph DataDir ["📁 data/ (Flat-File Storage)"]
+        DataActive["📄 Active Runtime:<br/>users.dat, course_bookings.dat, reviews.dat"]
+        DataSeed["📁 seed/<br/>Dữ liệu hạt giống chuẩn hóa 52 users, 23 bookings"]
+        DataArchive["📁 archive/<br/>Lưu trữ dữ liệu lịch sử kiểm toán"]
+    end
+    Root --> DataDir
+
+    %% Thư mục tests
+    subgraph TestsDir ["📁 tests/ (Automated Verification)"]
+        TestRunner["📄 TestRunner.cpp<br/>30 Test Suites độc lập"]
+    end
+    Root --> TestsDir
+
+    %% Thư mục docs
+    subgraph DocsDir ["📁 docs/ (Technical Documentation)"]
+        DocsIntro["📁 01_introduction/"]
+        DocsArch["📁 02_system_architecture/"]
+        DocsFunc["📁 03_functional_specification/"]
+        DocsData["📁 04_data_and_database/"]
+        DocsBus["📁 05_business_logic/"]
+        DocsSolid["📁 06_solid_analysis/"]
+        DocsRef["📁 07_code_reference/"]
+        DocsQuality["📁 08_quality_and_testing/"]
+        DocsDiagrams["📁 diagrams/"]
+    end
+    Root --> DocsDir
+
+    classDef rootStyle fill:#eceff1,stroke:#37474f,stroke-width:2px;
+    classDef incStyle fill:#e8eaf6,stroke:#3f51b5,stroke-width:1px;
+    classDef srcStyle fill:#e0f2f1,stroke:#009688,stroke-width:1px;
+    classDef uiStyle fill:#f3e5f5,stroke:#9c27b0,stroke-width:1px;
+    classDef dataStyle fill:#fff3e0,stroke:#ff9800,stroke-width:1px;
+    classDef testStyle fill:#e8f5e9,stroke:#4caf50,stroke-width:1px;
+    classDef docStyle fill:#fce4ec,stroke:#e91e63,stroke-width:1px;
+
+    class Root,CMake,Presets,Readme rootStyle;
+    class IncDir,IncPres,IncBus,IncDAL incStyle;
+    class SrcDir,SrcPres,SrcBus,SrcDAL,SrcTools srcStyle;
+    class UIDir,QMLViews,QMLModals,QMLComponents uiStyle;
+    class DataDir,DataActive,DataSeed,DataArchive dataStyle;
+    class TestsDir,TestRunner testStyle;
+    class DocsDir,DocsIntro,DocsArch,DocsFunc,DocsData,DocsBus,DocsSolid,DocsRef,DocsQuality,DocsDiagrams docStyle;

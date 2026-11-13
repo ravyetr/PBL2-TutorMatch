@@ -1,0 +1,49 @@
+sequenceDiagram
+    %% =========================================================================
+    %% DIAGRAM 11: STUDENT COURSE REGISTRATION SEQUENCE
+    %% =========================================================================
+    autonumber
+    actor Student as Học viên (QML UI)
+    participant Modal as BookingModal.qml
+    participant Bridge as GUIBridge (Presentation)
+    participant BookSvc as BookingService (Business)
+    participant Sched as ScheduleGuard (Algorithm)
+    participant CbRepo as ICourseBookingRepository (DAL)
+    participant Disk as course_bookings.dat
+
+    Student->>Modal: Chọn Môn học, Số tuần (4/8/12), Ngày bắt đầu, Các ca học
+    Student->>Modal: Tick chọn [X] "Tôi đồng ý với chính sách cam kết khóa học V1"
+    Student->>Modal: Nhấn nút "Gửi Yêu Cầu Đăng Ký Khóa Học"
+
+    Modal->>Bridge: requestCourseBookingMulti(tutorId, subject, chosenSlots, startDate, weeksCount, true)
+    Bridge->>Bridge: Kiểm tra currentUser != null && role == STUDENT
+
+    Bridge->>BookSvc: createRecurringCourseBooking(studentId, tutorId, subject, ... chosenSlots, acknowledgeCommitment=true)
+    BookSvc->>BookSvc: lock_guard<recursive_mutex> lock(serviceMutex)
+
+    Note over BookSvc,Sched: Kiểm tra Xung Đột & Ràng Buộc Nghiệp Vụ
+    BookSvc->>BookSvc: Kiểm tra studentId != tutorId
+    BookSvc->>BookSvc: Kiểm tra weeksCount in {4, 8, 12}
+    BookSvc->>BookSvc: Kiểm tra acknowledgeCommitment == true
+    BookSvc->>Sched: countMatchingSlots(chosenSlotsMask, tutorScheduleMask)
+    Sched-->>BookSvc: Hợp lệ (Tất cả ca đều nằm trong lịch rảnh gia sư)
+
+    BookSvc->>CbRepo: getCourseBookingsByTutorId(tutorId)
+    CbRepo-->>BookSvc: Danh sách khóa học của gia sư
+    BookSvc->>BookSvc: Kiểm tra không trùng lịch với các khóa ACCEPTED đang diễn ra
+
+    Note over BookSvc,CbRepo: Tạo Bản Ghi CourseBooking Mới
+    BookSvc->>CbRepo: getNextCourseBookingId()
+    CbRepo-->>BookSvc: nextId (ví dụ: 1024)
+    BookSvc->>BookSvc: Khởi tạo CourseBooking(id, status="PENDING", studentAck=true, studentAckTimestamp=now, commitmentVersion="COMMITMENT_V1")
+
+    BookSvc->>CbRepo: saveCourseBooking(newBooking)
+    CbRepo->>Disk: Ghi bản ghi nguyên tử vào course_bookings.dat
+    Disk-->>CbRepo: Lưu thành công
+    CbRepo-->>BookSvc: return true
+
+    BookSvc-->>Bridge: return true ("Gửi yêu cầu đăng ký khóa học thành công!")
+    Bridge->>Bridge: statusMessageStr = outMsg
+    Bridge->>Modal: Q_EMIT dataChanged()
+    Bridge-->>Modal: return true
+    Modal-->>Student: Đóng modal & hiển thị thông báo thành công

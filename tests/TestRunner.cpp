@@ -12,36 +12,40 @@
 #include <mutex>
 
 // Domain & Interfaces
-#include "models/User.h"
-#include "models/CourseBooking.h"
-#include "models/Review.h"
-#include "models/SubjectTaxonomy.h"
-#include "ds/ScheduleGuard.h"
-#include "ds/AVLTree.h"
-#include "storage/IRepository.h"
-#include "storage/MockDatabaseEngine.h"
-#include "storage/DataFileInspector.h"
-#include "storage/serializers/SerializerUtils.h"
-#include "storage/serializers/UserSerializer.h"
-#include "storage/serializers/CourseBookingSerializer.h"
-#include "storage/serializers/ReviewSerializer.h"
-#include "storage/repositories/FileUserRepository.h"
-#include "storage/repositories/FileReviewRepository.h"
-#include "storage/repositories/FileCourseBookingRepository.h"
-#include "storage/ApplicationPaths.h"
-#include "utils/DateUtils.h"
-#include "algorithms/IMatchingStrategy.h"
-#include "algorithms/MatchingEngine.h"
-#include "algorithms/TutorSearchMatcher.h"
+#include "business/domain/User.h"
+#include "business/domain/CourseBooking.h"
+#include "business/domain/Review.h"
+#include "business/matching/SubjectTaxonomy.h"
+#include "business/algorithms/ScheduleGuard.h"
+#include "business/algorithms/AVLTree.h"
+#include "business/algorithms/HashTable.h"
+#include "business/algorithms/LRUCache.h"
+#include "business/algorithms/MaxHeap.h"
+#include "business/algorithms/DoublyLinkedList.h"
+#include "data_access/repositories/IRepository.h"
+#include "data_access/storage/MockDatabaseEngine.h"
+#include "data_access/storage/DataFileInspector.h"
+#include "data_access/serializers/SerializerUtils.h"
+#include "data_access/serializers/UserSerializer.h"
+#include "data_access/serializers/CourseBookingSerializer.h"
+#include "data_access/serializers/ReviewSerializer.h"
+#include "data_access/repositories/FileUserRepository.h"
+#include "data_access/repositories/FileReviewRepository.h"
+#include "data_access/repositories/FileCourseBookingRepository.h"
+#include "data_access/storage/ApplicationPaths.h"
+#include "business/domain/DateUtils.h"
+#include "business/matching/IMatchingStrategy.h"
+#include "business/matching/MatchingEngine.h"
+#include "business/matching/TutorSearchMatcher.h"
 
 // Services
-#include "services/AuthService.h"
-#include "services/UserService.h"
-#include "services/BookingService.h"
-#include "services/ReviewService.h"
-#include "services/MatchingService.h"
-#include "services/AdminService.h"
-#include "gui/GUIBridge.h"
+#include "business/services/AuthService.h"
+#include "business/services/UserService.h"
+#include "business/services/BookingService.h"
+#include "business/services/ReviewService.h"
+#include "business/services/MatchingService.h"
+#include "business/services/AdminService.h"
+#include "presentation/bridges/GUIBridge.h"
 
 using namespace TutorMatch;
 
@@ -1466,10 +1470,10 @@ void run_test_entity_serializers() {
         assert(strongTutor != nullptr);
         assert(strongTutor->getId() == 202);
 
-        // 3. Admin Round-trip & Invariants
-        Admin origAdmin(303, "admin_test", "superSecret", "admin@test.vn", "Quản Trị Viên Hệ Thống",
-                        9, true);
+        // 3. Admin Round-trip & Invariants (Unified Root Admin, 7 Base Fields)
+        Admin origAdmin(303, "admin_test", "superSecret", "admin@test.vn", "Quản Trị Viên Hệ Thống", true);
         std::string adminCsv = UserSerializer::toCsv(origAdmin);
+        assert(SerializerUtils::splitCsvLine(adminCsv).size() == 7);
 
         deserializedUser = UserSerializer::fromCsv(adminCsv, &parseErr);
         assert(deserializedUser != nullptr);
@@ -1484,7 +1488,7 @@ void run_test_entity_serializers() {
         assert(aPtr->getEmail() == "admin@test.vn");
         assert(aPtr->getFullName() == "Quản Trị Viên Hệ Thống");
         assert(aPtr->getIsActive() == true);
-        assert(aPtr->getPermissionLevel() == 9);
+        assert(aPtr->getRole() == UserRole::ADMIN);
 
         auto strongAdmin = UserSerializer::adminFromCsv(adminCsv);
         assert(strongAdmin != nullptr);
@@ -1506,7 +1510,8 @@ void run_test_entity_serializers() {
 
         assert(UserSerializer::fromCsv("1,user,pass,mail,name,STUDENT,1", &err) == nullptr); // Student < 9 fields
         assert(UserSerializer::fromCsv("1,user,pass,mail,name,TUTOR,1,bio,subj,100", &err) == nullptr); // Tutor < 14 fields
-        assert(UserSerializer::fromCsv("1,user,pass,mail,name,ADMIN,1", &err) == nullptr); // Admin < 8 fields
+        assert(UserSerializer::fromCsv("1,user,pass,mail,name,ADMIN", &err) == nullptr); // Admin < 7 fields
+        assert(UserSerializer::fromCsv("1,user,pass,mail,name,ADMIN,1", &err) != nullptr); // Exactly 7 fields is valid
         assert(UserSerializer::fromCsv("invalid_id,user,pass,mail,name,STUDENT,1,10,Math,100,0", &err) == nullptr); // Non-numeric ID
         assert(UserSerializer::fromCsv("1,user,pass,mail,name,UNKNOWN_ROLE,1,10", &err) == nullptr); // Unknown role
 
@@ -1526,7 +1531,8 @@ void run_test_entity_serializers() {
 
         for (int i = 0; i < (int)validStatuses.size(); ++i) {
             CourseBooking origCb(500 + i, 10, 20, "Student A", "Tutor B",
-                                 "Math 12", 150000.0, i % 7, i % 8, "2026-11-13", 4, validStatuses[i], "2026-11-09");
+                                 "Math 12", 150000.0, "2026-11-13", 4, validStatuses[i], "2026-11-09",
+                                 std::to_string(i % 7) + ":" + std::to_string(i % 8));
             std::string cbCsv = CourseBookingSerializer::toCsv(origCb);
 
             std::string bErr;
@@ -1539,10 +1545,11 @@ void run_test_entity_serializers() {
             assert(cb.studentId == 10);
             assert(cb.tutorId == 20);
             assert(cb.status == validStatuses[i]);
+            assert(cb.weeklySchedule == std::to_string(i % 7) + ":" + std::to_string(i % 8));
         }
 
         std::string err;
-        assert(!CourseBookingSerializer::fromCsv("1,2,3,Student,Tutor,Math,100,1,0,2026-11-13,4,INVALID_STATUS,2026-11-09", &err).has_value());
+        assert(!CourseBookingSerializer::fromCsv("1,2,3,Student,Tutor,Math,100,2026-11-13,4,INVALID_STATUS,2026-11-09,1:0", &err).has_value());
         assert(!err.empty());
 
         assert(!CourseBookingSerializer::fromCsv("1,2,3,Student,Tutor,Math,100,1", &err).has_value());
@@ -1624,12 +1631,12 @@ void run_test_entity_serializers() {
         assert(UserSerializer::toCsv(t) == "2,tutor_math,pass123,le.math@tutormatch.vn,ThS. Lê Văn Toàn,TUTOR,1,Chuyên gia luyện thi Đại học môn Toán với 10 năm kinh nghiệm.,Toán 12 - Luyện thi Đại học,150000,5,2,0,71777214294589694");
 
         // 3. Admin canonical CSV parity
-        Admin a(1, "admin", "admin123", "admin@tutormatch.vn", "System Administrator", 9, true);
-        assert(UserSerializer::toCsv(a) == "1,admin,admin123,admin@tutormatch.vn,System Administrator,ADMIN,1,9");
+        Admin a(1, "admin", "admin123", "admin@tutormatch.vn", "System Administrator", true);
+        assert(UserSerializer::toCsv(a) == "1,admin,admin123,admin@tutormatch.vn,System Administrator,ADMIN,1");
 
         // 4. CourseBooking canonical CSV parity
         CourseBooking cb(101, 6, 2, "Nguyễn Văn Nam", "ThS. Lê Văn Toàn", "Toán 12",
-                         150000.0, 4, 0, "2026-11-13", 4, "COMPLETED", "2026-11-09");
+                         150000.0, "2026-11-13", 4, "COMPLETED", "2026-11-09", "4:0");
         assert(!CourseBookingSerializer::toCsv(cb).empty());
 
         // 5. Review canonical CSV parity
@@ -1719,7 +1726,7 @@ void run_test_concrete_file_repositories() {
         Student s(1, "student_john", "secret1", "john@mail.vn", "John Doe", 11, "Toán 11", 150000.0, 0x0000000000000001ULL, true);
         Tutor t1(2, "tutor_alice", "secret2", "alice@mail.vn", "Alice Tutor", "Bio Alice", "Vật lý", 200000.0, 4.8, 5, 1000000.0, 0x0000000000000002ULL, true);
         Tutor t2(3, "tutor_bob", "secret3", "bob@mail.vn", "Bob Tutor", "Bio Bob", "Toán 12", 120000.0, 4.2, 3, 600000.0, 0x0000000000000004ULL, true);
-        Admin a(4, "admin_root", "secret4", "root@mail.vn", "Root Admin", 9, true);
+        Admin a(4, "admin_root", "secret4", "root@mail.vn", "Root Admin", true);
 
         assert(userRepo.saveUser(s));
         assert(userRepo.saveUser(t1));
@@ -1803,7 +1810,7 @@ void run_test_concrete_file_repositories() {
         assert(cbRepo.getAllCourseBookings().empty());
         assert(cbRepo.getNextCourseBookingId() == 1001);
 
-        CourseBooking cb1(1001, 1, 3, "Student 1", "Tutor 1", "Math", 150000.0, 1, 0, "2026-11-13", 4, "PENDING", "2026-11-09");
+        CourseBooking cb1(1001, 1, 3, "Student 1", "Tutor 1", "Math", 150000.0, "2026-11-13", 4, "PENDING", "2026-11-09", "1:0");
         assert(cbRepo.saveCourseBooking(cb1));
         assert(cbRepo.getAllCourseBookings().size() == 1);
         assert(cbRepo.findCourseBookingById(1001) != nullptr);
@@ -2030,14 +2037,14 @@ void run_test_phase3_end_to_end_scenarios() {
         danId = userRepo->findUserByUsername("student_dan")->getId();
 
         std::string msg;
-        // Alice books Carol on Day 2, Slot 4, startDate 2026-11-11, 4 weeks
+        // Alice books Carol on Day 2, Slot 4, startDate 2026-11-18, 4 weeks
         int aliceCarolBId = 0;
-        assert(bookingService->bookCourse(aliceId, tutorCarolId, "Vật lý", 2, 4, "2026-11-11", 4, true, msg, &aliceCarolBId));
+        assert(bookingService->bookCourse(aliceId, tutorCarolId, "Vật lý", 2, 4, "2026-11-18", 4, true, msg, &aliceCarolBId));
         assert(bookingService->acceptCourseBooking(tutorCarolId, aliceCarolBId, true, msg));
 
         // Dan books Carol on same slot (2, 4) with overlapping dates
         int danCarolBId = 0;
-        assert(bookingService->bookCourse(danId, tutorCarolId, "Vật lý", 2, 4, "2026-11-11", 4, true, msg, &danCarolBId));
+        assert(bookingService->bookCourse(danId, tutorCarolId, "Vật lý", 2, 4, "2026-11-18", 4, true, msg, &danCarolBId));
 
         // Carol attempts to accept Dan's booking -> MUST BE BLOCKED due to conflict with Alice
         assert(!bookingService->acceptCourseBooking(tutorCarolId, danCarolBId, true, msg));
@@ -2048,9 +2055,9 @@ void run_test_phase3_end_to_end_scenarios() {
     // ========================================================================
     {
         std::string msg;
-        // Dan books Bob on Day 3, Slot 1, startDate 2026-11-12, 4 weeks
+        // Dan books Bob on Day 3, Slot 1, startDate 2026-11-19, 4 weeks
         int danBobBId = 0;
-        assert(bookingService->bookCourse(danId, tutorBobId, "Toán 12", 3, 1, "2026-11-12", 4, true, msg, &danBobBId));
+        assert(bookingService->bookCourse(danId, tutorBobId, "Toán 12", 3, 1, "2026-11-19", 4, true, msg, &danBobBId));
 
         // Bob rejects Dan's booking
         assert(bookingService->rejectCourseBooking(tutorBobId, danBobBId, msg));
@@ -2058,7 +2065,7 @@ void run_test_phase3_end_to_end_scenarios() {
 
         // Now Alice can book Bob on Day 3, Slot 1 and Bob can accept
         int aliceBobBId = 0;
-        assert(bookingService->bookCourse(aliceId, tutorBobId, "Toán 12", 3, 1, "2026-11-12", 4, true, msg, &aliceBobBId));
+        assert(bookingService->bookCourse(aliceId, tutorBobId, "Toán 12", 3, 1, "2026-11-19", 4, true, msg, &aliceBobBId));
         assert(bookingService->acceptCourseBooking(tutorBobId, aliceBobBId, true, msg));
     }
 
@@ -2277,7 +2284,7 @@ void run_test_recurring_course_booking() {
     // 2. CourseBookingSerializer Unit Tests
     {
         CourseBooking orig(1001, 10, 20, "Học viên A", "Gia sư B", "Toán 12",
-                           150000.0, 0, 1, "2026-11-09", 8, "PENDING", "2026-11-06");
+                           150000.0, "2026-11-09", 8, "PENDING", "2026-11-06", "0:1");
         std::string csv = CourseBookingSerializer::toCsv(orig);
         std::string err;
         auto parsed = CourseBookingSerializer::fromCsv(csv, &err);
@@ -2289,21 +2296,24 @@ void run_test_recurring_course_booking() {
         assert(parsed->tutorName == "Gia sư B");
         assert(parsed->subject == "Toán 12");
         assert(parsed->hourlyRate == 150000.0);
-        assert(parsed->dayOfWeek == 0);
-        assert(parsed->slotIndex == 1);
         assert(parsed->startDate == "2026-11-09");
         assert(parsed->weeksCount == 8);
         assert(parsed->status == "PENDING");
         assert(parsed->createdAt == "2026-11-06");
+        assert(parsed->weeklySchedule == "0:1");
+        assert(parsed->getWeeklySlots().size() == 1);
+        assert(parsed->getWeeklySlots()[0].first == 0);
+        assert(parsed->getWeeklySlots()[0].second == 1);
         assert(parsed->getTotalCost() == 1200000.0);
         assert(parsed->getTotalSessions() == 8);
 
         // Malformed line rejection
         assert(!CourseBookingSerializer::fromCsv("1,2,3", &err).has_value());
-        assert(!CourseBookingSerializer::fromCsv("1,2,3,A,B,Math,100,7,1,2026-11-09,4,PENDING,2026-11-06", &err).has_value()); // dayOfWeek 7 invalid
-        assert(!CourseBookingSerializer::fromCsv("1,2,3,A,B,Math,100,0,8,2026-11-09,4,PENDING,2026-11-06", &err).has_value()); // slotIndex 8 invalid
-        assert(!CourseBookingSerializer::fromCsv("1,2,3,A,B,Math,100,0,1,2026-02-30,4,PENDING,2026-11-06", &err).has_value()); // invalid date
-        assert(!CourseBookingSerializer::fromCsv("1,2,3,A,B,Math,100,0,1,2026-11-09,4,UNKNOWN,2026-11-06", &err).has_value()); // invalid status
+        assert(!CourseBookingSerializer::fromCsv("1,2,3,A,B,Math,100,2026-11-09,4,PENDING,2026-11-06,7:1", &err).has_value()); // dayOfWeek 7 invalid in weeklySchedule
+        assert(!CourseBookingSerializer::fromCsv("1,2,3,A,B,Math,100,2026-11-09,4,PENDING,2026-11-06,0:8", &err).has_value()); // slotIndex 8 invalid in weeklySchedule
+        assert(!CourseBookingSerializer::fromCsv("1,2,3,A,B,Math,100,2026-02-30,4,PENDING,2026-11-06,0:1", &err).has_value()); // invalid date
+        assert(!CourseBookingSerializer::fromCsv("1,2,3,A,B,Math,100,2026-11-09,4,UNKNOWN,2026-11-06,0:1", &err).has_value()); // invalid status
+        assert(!CourseBookingSerializer::fromCsv("1,2,3,A,B,Math,100,2026-11-09,4,PENDING,2026-11-06,invalid_schedule", &err).has_value()); // malformed weeklySchedule
     }
 
     // 3. FileCourseBookingRepository Sandbox Persistence
@@ -2321,7 +2331,7 @@ void run_test_recurring_course_booking() {
         assert(id1 == 1001);
 
         CourseBooking cb1(id1, 10, 20, "Học viên A", "Gia sư B", "Toán 12",
-                          150000.0, 0, 0, "2026-11-09", 4, "PENDING", "2026-11-06");
+                          150000.0, "2026-11-09", 4, "PENDING", "2026-11-06", "0:0");
         assert(repo->saveCourseBooking(cb1));
 
         auto found = repo->findCourseBookingById(id1);
@@ -2712,43 +2722,45 @@ void run_test_data_audit_cleanup_and_migration() {
     // 1. Parsing & Schema Validation
     {
         std::string err;
-        // Valid 13 fields CourseBooking
-        std::string validLine = "1001,6,2,Nguyễn Văn Nam,ThS. Lê Văn Toàn,Toán 12 - Luyện thi Đại học,150000,4,0,2026-11-06,4,ACCEPTED,2026-11-06";
+        // Valid 12 fields normalized CourseBooking (or legacy)
+        std::string validLine = "1001,6,2,Nguyễn Văn Nam,ThS. Lê Văn Toàn,Toán 12 - Luyện thi Đại học,150000,2026-11-06,4,ACCEPTED,2026-11-06,4:0";
         auto cbOpt = CourseBookingSerializer::fromCsv(validLine, &err);
         assert(cbOpt.has_value());
         assert(cbOpt->id == 1001);
-        assert(cbOpt->dayOfWeek == 4);
-        assert(cbOpt->slotIndex == 0);
+        assert(cbOpt->weeklySchedule == "4:0");
+        assert(!cbOpt->getWeeklySlots().empty());
+        assert(cbOpt->getWeeklySlots()[0].first == 4);
+        assert(cbOpt->getWeeklySlots()[0].second == 0);
         assert(cbOpt->startDate == "2026-11-06");
         assert(cbOpt->weeksCount == 4);
         assert(cbOpt->status == "ACCEPTED");
 
-        // Invalid field counts
-        assert(!CourseBookingSerializer::fromCsv("1,2,3,4,5,6,7,8,9,10,11,12", &err).has_value());
-        assert(err.find("requires at least 13 fields") != std::string::npos);
+        // Invalid field counts (< 12 fields)
+        assert(!CourseBookingSerializer::fromCsv("1,2,3,4,5,6,7,8,9,10,11", &err).has_value());
+        assert(err.find("requires at least 12 fields") != std::string::npos);
 
-        // Invalid dayOfWeek
-        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,7,0,2026-11-06,4,ACCEPTED,2026-11-06", &err).has_value());
-        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,-1,0,2026-11-06,4,ACCEPTED,2026-11-06", &err).has_value());
+        // Invalid weeklySchedule dayOfWeek
+        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,2026-11-06,4,ACCEPTED,2026-11-06,7:0", &err).has_value());
+        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,2026-11-06,4,ACCEPTED,2026-11-06,-1:0", &err).has_value());
 
-        // Invalid slotIndex
-        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,4,8,2026-11-06,4,ACCEPTED,2026-11-06", &err).has_value());
-        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,4,-1,2026-11-06,4,ACCEPTED,2026-11-06", &err).has_value());
+        // Invalid weeklySchedule slotIndex
+        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,2026-11-06,4,ACCEPTED,2026-11-06,4:8", &err).has_value());
+        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,2026-11-06,4,ACCEPTED,2026-11-06,4:-1", &err).has_value());
 
         // Invalid startDate format
-        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,4,0,2026/11/06,4,ACCEPTED,2026-11-06", &err).has_value());
-        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,4,0,invalid-date,4,ACCEPTED,2026-11-06", &err).has_value());
+        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,2026/11/06,4,ACCEPTED,2026-11-06,4:0", &err).has_value());
+        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,invalid-date,4,ACCEPTED,2026-11-06,4:0", &err).has_value());
 
         // Non-positive weeksCount
-        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,4,0,2026-11-06,0,ACCEPTED,2026-11-06", &err).has_value());
-        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,4,0,2026-11-06,-4,ACCEPTED,2026-11-06", &err).has_value());
+        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,2026-11-06,0,ACCEPTED,2026-11-06,4:0", &err).has_value());
+        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,2026-11-06,-4,ACCEPTED,2026-11-06,4:0", &err).has_value());
 
         // Invalid status
-        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,4,0,2026-11-06,4,UNKNOWN_STATUS,2026-11-06", &err).has_value());
+        assert(!CourseBookingSerializer::fromCsv("1001,6,2,Nam,Toan,Math,150000,2026-11-06,4,UNKNOWN_STATUS,2026-11-06,4:0", &err).has_value());
 
         // Invalid numeric IDs
-        assert(!CourseBookingSerializer::fromCsv("ABC,6,2,Nam,Toan,Math,150000,4,0,2026-11-06,4,ACCEPTED,2026-11-06", &err).has_value());
-        assert(!CourseBookingSerializer::fromCsv("1001,XYZ,2,Nam,Toan,Math,150000,4,0,2026-11-06,4,ACCEPTED,2026-11-06", &err).has_value());
+        assert(!CourseBookingSerializer::fromCsv("ABC,6,2,Nam,Toan,Math,150000,2026-11-06,4,ACCEPTED,2026-11-06,4:0", &err).has_value());
+        assert(!CourseBookingSerializer::fromCsv("1001,XYZ,2,Nam,Toan,Math,150000,2026-11-06,4,ACCEPTED,2026-11-06,4:0", &err).has_value());
     }
 
     // 2. Calendar Invariants & DateUtils Arithmetic
@@ -2962,7 +2974,9 @@ void run_test_data_audit_cleanup_and_migration() {
             assert(userMap.count(cb.tutorId) == 1);
             assert(userMap[cb.tutorId]->getRole() == UserRole::TUTOR);
 
-            assert(DateUtils::dayOfWeek(cb.startDate) == cb.dayOfWeek);
+            auto cbSlots = cb.getWeeklySlots();
+            assert(!cbSlots.empty());
+            assert(DateUtils::dayOfWeek(cb.startDate) == cbSlots[0].first);
             assert(cb.weeksCount == 4 || cb.weeksCount == 8 || cb.weeksCount == 12);
 
             if (cb.status == "ACCEPTED") {
@@ -2970,13 +2984,13 @@ void run_test_data_audit_cleanup_and_migration() {
                 assert(static_cast<int>(sDates.size()) == cb.weeksCount);
                 for (const auto& d : sDates) {
                     for (const auto& res : acceptedSessions) {
-                        if (res.date == d && res.slot == cb.slotIndex) {
+                        if (res.date == d && res.slot == cbSlots[0].second) {
                             // Must not conflict with same tutor or same student
                             assert(res.tutorId != cb.tutorId);
                             assert(res.studentId != cb.studentId);
                         }
                     }
-                    acceptedSessions.push_back(ReservedSession{d, cb.slotIndex, cb.tutorId, cb.studentId, cb.id});
+                    acceptedSessions.push_back(ReservedSession{d, cbSlots[0].second, cb.tutorId, cb.studentId, cb.id});
                 }
             }
         }
@@ -3108,7 +3122,7 @@ void run_test_multi_slot_course_and_consensual_termination() {
     // 9. Auto-completion of expired courses:
     // Inject an ACCEPTED course whose endDate is in the past
     CourseBooking expiredCb(9999, 20, 10, "Nguyễn An", "ThS Hoàng", "Toán 12",
-                            200000.0, 0, 0, "2026-09-01", 4, "ACCEPTED", "2026-09-01");
+                            200000.0, "2026-09-01", 4, "ACCEPTED", "2026-09-01", "0:0");
     cbRepo->saveCourseBooking(expiredCb);
     service.autoCompleteExpiredCourses();
     auto afterAuto = cbRepo->findCourseBookingById(9999);
@@ -3234,7 +3248,7 @@ void run_test_commitment_acknowledgment_and_review_matrix() {
     // Scenario 6: Legacy booking (unacknowledged) cannot be accepted until student acknowledges
     // ------------------------------------------------------------------------
     CourseBooking legacyCb(8888, 20, 10, "Nguyễn Mai", "ThS Tuấn", "Toán 12", 200000.0,
-                          2, 1, "2026-11-11", 4, "PENDING", "2026-11-09", "2:1",
+                          "2026-11-11", 4, "PENDING", "2026-11-09", "2:1",
                           0, "NONE", "", "", false, "", false, "", "");
     cbRepo->saveCourseBooking(legacyCb);
 
@@ -3274,7 +3288,7 @@ void run_test_commitment_acknowledgment_and_review_matrix() {
     // Review Eligibility Matrix: COMPLETED, EARLY_TERMINATED vs Others
     // ------------------------------------------------------------------------
     int bCompId = -1;
-    assert(bookingService.bookCourse(20, 10, "Toán 12", 3, 2, "2026-11-12", 4, true, msg, &bCompId));
+    assert(bookingService.bookCourse(20, 10, "Toán 12", 3, 2, "2026-11-19", 4, true, msg, &bCompId));
     assert(bookingService.acceptCourseBooking(10, bCompId, true, msg));
     assert(bookingService.terminateCourseBooking(10, UserRole::TUTOR, bCompId, msg));
     auto bComp = cbRepo->findCourseBookingById(bCompId);
@@ -3470,7 +3484,7 @@ void run_test_student_profile_and_smartmatch_criteria_ranking() {
         // Filter 5: Active reservation conflict
         // Suppose tMath has an accepted course booking on Monday Ca 7 during 2026-11-16 to 2026-12-14
         CourseBooking activeRes(501, 99, 201, "Student X", "ThS. Tran Math", "Toán 12", 150000.0,
-                              0, 6, "2026-11-16", 4, "ACCEPTED", "2026-11-10", "0:6", 0, "NONE", "", "", true, "", true, "", "");
+                              "2026-11-16", 4, "ACCEPTED", "2026-11-10", "0:6", 0, "NONE", "", "", true, "", true, "", "");
         activeBookings.push_back(activeRes);
 
         // Now tMath has conflict on Mon Ca 7 -> strictly ineligible!
@@ -3644,9 +3658,9 @@ void run_test_persistence_schema_and_migration() {
         std::filesystem::remove_all(testDir, ec);
     }
 
-    // 4. Preserving tutor (14 fields) and admin (8 fields) records without distortion
+    // 4. Preserving tutor (14 fields) and admin (7 fields) records without distortion
     {
-        Admin a(1, "admin_user", "sec123", "admin@tm.vn", "Admin Root", 9, true);
+        Admin a(1, "admin_user", "sec123", "admin@tm.vn", "Admin Root", true);
         Tutor t(2, "tutor_user", "sec456", "tutor@tm.vn", "Tutor Demo", "Tiểu sử", "Vật lý 10", 200000.0, 4.9, 10, 500000.0, 0x55ULL, true);
 
         std::string aCsv = UserSerializer::toCsv(a);
@@ -3654,12 +3668,12 @@ void run_test_persistence_schema_and_migration() {
 
         auto tokensA = SerializerUtils::splitCsvLine(aCsv);
         auto tokensT = SerializerUtils::splitCsvLine(tCsv);
-        assert(tokensA.size() == 8);
+        assert(tokensA.size() == 7);
         assert(tokensT.size() == 14);
 
         auto aParsed = UserSerializer::adminFromCsv(aCsv);
         auto tParsed = UserSerializer::tutorFromCsv(tCsv);
-        assert(aParsed != nullptr && aParsed->getPermissionLevel() == 9);
+        assert(aParsed != nullptr && aParsed->getRole() == UserRole::ADMIN);
         assert(tParsed != nullptr && tParsed->getSubjectSpecialty() == "Vật lý 10");
         assert(tParsed->getHourlyRate() == 200000.0);
     }
@@ -3754,7 +3768,7 @@ void run_test_persistence_schema_and_migration() {
             } else if (role == "TUTOR") {
                 assert(tokens.size() == 14);
             } else if (role == "ADMIN") {
-                assert(tokens.size() == 8);
+                assert(tokens.size() == 7);
             }
 
             // Test Full Round-Trip Parity: read -> deserialize -> serialize == raw line
@@ -4249,6 +4263,674 @@ void run_test_tutor_verification_decommission() {
     std::cout << "  -> PASS: All 5 Tutor Verification Decommission Invariants verified successfully!" << std::endl;
 }
 
+void run_test_generic_data_structures_invariants() {
+    std::cout << "\n[TEST SUITE 30] Verifying Generic Data Structures & Algorithmic Invariants (HashTable, AVLTree, LRUCache, ScheduleGuard, MaxHeap, DoublyLinkedList)..." << std::endl;
+
+    // 1. HashTable O(1) Test
+    HashTable<std::string, int> hashTab;
+    hashTab.insert("student_1", 101);
+    hashTab.insert("tutor_99", 202);
+    int val = 0;
+    assert(hashTab.find("student_1", val) && val == 101);
+    assert(hashTab.find("tutor_99", val) && val == 202);
+
+    // 2. AVL Tree Range Query Test
+    AVLTree<double, std::string> avlTree;
+    avlTree.insert(25.0, "Tutor_Cheap");
+    avlTree.insert(45.0, "Tutor_Mid");
+    avlTree.insert(80.0, "Tutor_Exp");
+    avlTree.insert(35.0, "Tutor_Fair");
+
+    auto rangeResults = avlTree.rangeSearch(20.0, 50.0);
+    assert(rangeResults.size() == 3); // 25, 35, 45
+
+    // 3. LRU Cache Eviction Test
+    LRUCache<int, std::string> lruCache(2); // Capacity = 2
+    lruCache.put(1, "Profile_1");
+    lruCache.put(2, "Profile_2");
+    std::string profile;
+    assert(lruCache.get(1, profile));  // Access 1 -> 1 becomes MRU, 2 becomes LRU
+    lruCache.put(3, "Profile_3");      // Evicts 2
+    assert(!lruCache.get(2, profile)); // 2 was evicted!
+    assert(lruCache.get(1, profile));   // 1 is present
+    assert(lruCache.get(3, profile));   // 3 is present
+
+    // 4. Bitmask Schedule Guard Test
+    uint64_t tutorSchedule = ScheduleGuard::getSlotMask(0, 0) | ScheduleGuard::getSlotMask(0, 1);
+    uint64_t reqValid = ScheduleGuard::getSlotMask(0, 0);
+    uint64_t reqInvalid = ScheduleGuard::getSlotMask(1, 0);
+
+    assert(ScheduleGuard::isSlotAvailable(tutorSchedule, reqValid) == true);
+    assert(ScheduleGuard::isSlotAvailable(tutorSchedule, reqInvalid) == false);
+
+    // 5. Max-Heap Priority Queue Ranking Test
+    MaxHeap<int> maxHeap;
+    maxHeap.push(45);
+    maxHeap.push(98);
+    maxHeap.push(72);
+    maxHeap.push(15);
+
+    auto top2 = maxHeap.extractSortedTopK(2);
+    assert(top2.size() == 2 && top2[0] == 98 && top2[1] == 72);
+
+    // 6. DoublyLinkedList Basic Test
+    DoublyLinkedList<int> dList;
+    dList.pushBack(10);
+    dList.pushBack(20);
+    dList.pushFront(5);
+    assert(dList.size() == 3);
+    assert(dList.getHead()->data == 5);
+    assert(dList.getTail()->data == 20);
+    assert(dList.popBack() == 20);
+    assert(dList.size() == 2);
+
+    std::cout << "  -> PASS: All Generic Data Structures & Algorithmic Invariants verified successfully!" << std::endl;
+}
+
+// ============================================================================
+// TEST SUITE 31: Admin Permission Level Removal & Unified Root Authorization
+// ============================================================================
+void run_test_admin_permission_level_removal_and_authorization() {
+    std::cout << "\n[TEST SUITE 31] Verifying Unified Root Admin Authorization & Permission Level Removal..." << std::endl;
+
+    // 1. Domain Model: Admin inherits from User, uses exactly 7 base fields, no permissionLevel
+    {
+        Admin defaultAdmin;
+        assert(defaultAdmin.getRole() == UserRole::ADMIN);
+        assert(defaultAdmin.getId() == 0);
+        assert(defaultAdmin.getRoleString() == "Quản trị viên");
+
+        Admin admin(999, "root_admin", "hash999", "root@tutormatch.vn", "Root Admin", true);
+        assert(admin.getId() == 999);
+        assert(admin.getUsername() == "root_admin");
+        assert(admin.getPasswordHash() == "hash999");
+        assert(admin.getEmail() == "root@tutormatch.vn");
+        assert(admin.getFullName() == "Root Admin");
+        assert(admin.getRole() == UserRole::ADMIN);
+        assert(admin.getIsActive() == true);
+    }
+
+    // 2. Serialization & Deserialization: Admin has exactly 7 fields
+    {
+        Admin admin(101, "adm_sec", "pHash", "adm@tm.vn", "Admin Security", true);
+        std::string csv = UserSerializer::toCsv(admin);
+        auto tokens = SerializerUtils::splitCsvLine(csv);
+        assert(tokens.size() == 7);
+        assert(tokens[0] == "101");
+        assert(tokens[1] == "adm_sec");
+        assert(tokens[2] == "pHash");
+        assert(tokens[3] == "adm@tm.vn");
+        assert(tokens[4] == "Admin Security");
+        assert(tokens[5] == "ADMIN");
+        assert(tokens[6] == "1");
+
+        // Parse from 7-field CSV
+        std::string parseErr;
+        auto parsedUser = UserSerializer::fromCsv(csv, &parseErr);
+        assert(parsedUser != nullptr);
+        assert(parseErr.empty());
+        assert(parsedUser->getRole() == UserRole::ADMIN);
+        assert(parsedUser->getFullName() == "Admin Security");
+
+        // Direct typed deserializer
+        auto typedAdmin = UserSerializer::adminFromCsv(csv, &parseErr);
+        assert(typedAdmin != nullptr);
+        assert(typedAdmin->getId() == 101);
+
+        // Backward compatibility: parsing legacy 8-field CSV line gracefully succeeds
+        std::string legacyCsv = "102,adm_legacy,pHash2,legacy@tm.vn,Legacy Admin,ADMIN,1,9";
+        auto parsedLegacy = UserSerializer::fromCsv(legacyCsv, &parseErr);
+        assert(parsedLegacy != nullptr);
+        assert(parseErr.empty());
+        assert(parsedLegacy->getRole() == UserRole::ADMIN);
+        assert(parsedLegacy->getId() == 102);
+        // And when re-serialized, legacy 8th field is dropped (unified 7-field schema)
+        std::string reserialized = UserSerializer::toCsv(*parsedLegacy);
+        assert(SerializerUtils::splitCsvLine(reserialized).size() == 7);
+
+        // Malformed admin with < 7 fields must fail
+        std::string malformedCsv = "103,adm_bad,pHash3,bad@tm.vn,Bad Admin,ADMIN";
+        auto badAdmin = UserSerializer::fromCsv(malformedCsv, &parseErr);
+        assert(badAdmin == nullptr);
+        assert(!parseErr.empty());
+    }
+
+    // 3. Authorization: Unified ADMIN role allows management, non-admins are blocked
+    {
+        auto userRepo = std::make_shared<TutorMatch::FileUserRepository>(ApplicationPaths::resolveDataDirectory() + "/users.dat");
+        auto reviewRepo = std::make_shared<TutorMatch::FileReviewRepository>(ApplicationPaths::resolveDataDirectory() + "/reviews.dat");
+        auto cbRepo = std::make_shared<TutorMatch::FileCourseBookingRepository>(ApplicationPaths::resolveDataDirectory() + "/course_bookings.dat");
+        assert(userRepo->initialize());
+        assert(reviewRepo->initialize());
+        assert(cbRepo->initialize());
+        auto bookingSvc = std::make_shared<TutorMatch::BookingService>(userRepo, reviewRepo, cbRepo);
+        auto adminSvc = std::make_shared<TutorMatch::AdminService>(userRepo, reviewRepo, bookingSvc);
+        auto authSvc = std::make_shared<TutorMatch::AuthService>(userRepo);
+
+        // Active admin can login successfully
+        std::string authErr;
+        assert(authSvc->login("admin", "admin123", authErr));
+
+        // Wrong password fails authentication
+        assert(!authSvc->login("admin", "wrong_pass", authErr));
+        assert(!authErr.empty());
+
+        // Metrics calculation succeeds for Admin
+        auto metrics = adminSvc->calculateMetrics();
+        assert(metrics.totalTutors > 0);
+        assert(metrics.totalStudents > 0);
+
+        // Admin privilege: Admin can toggle lock on user
+        std::string toggleMsg;
+        assert(adminSvc->toggleUserLock(6, toggleMsg));
+        auto u6 = userRepo->findUserById(6);
+        assert(u6 != nullptr && !u6->getIsActive());
+        // Toggle back to active
+        assert(adminSvc->toggleUserLock(6, toggleMsg));
+        u6 = userRepo->findUserById(6);
+        assert(u6 != nullptr && u6->getIsActive());
+    }
+
+    std::cout << "  -> PASS: Unified Root Admin Authorization & 7-Field Schema verified 100%!" << std::endl;
+}
+
+// ============================================================================
+// TEST SUITE 32: Tutor Accumulated Income & Reconciliation Verification
+// ============================================================================
+void run_test_tutor_accumulated_income_and_reconciliation() {
+    std::cout << "\n[TEST SUITE 32] Verifying Tutor Accumulated Income, Single Source of Truth & Reconciliation..." << std::endl;
+
+    std::string dataDir = ApplicationPaths::resolveDataDirectory();
+    auto userRepo = std::make_shared<TutorMatch::FileUserRepository>(dataDir + "/users.dat");
+    auto reviewRepo = std::make_shared<TutorMatch::FileReviewRepository>(dataDir + "/reviews.dat");
+    auto cbRepo = std::make_shared<TutorMatch::FileCourseBookingRepository>(dataDir + "/course_bookings.dat");
+    assert(userRepo->initialize());
+    assert(reviewRepo->initialize());
+    assert(cbRepo->initialize());
+
+    auto bookingSvc = std::make_shared<TutorMatch::BookingService>(userRepo, reviewRepo, cbRepo);
+
+    // 1. Zero income when no completed courses
+    // Tutor 4 (Ms. Nguyễn Anh Vương) and Tutor 5 (Thầy Phạm Hồng Hà) have 0 completed courses
+    assert(bookingSvc->calculateTutorAccumulatedIncome(4) == 0.0);
+    assert(bookingSvc->calculateTutorAccumulatedIncome(5) == 0.0);
+    assert(bookingSvc->calculateTutorAccumulatedIncome(9999) == 0.0); // Non-existent tutor
+
+    // 2. Exact calculation for Tutor with 1 completed course
+    // Tutor 3 (TS. Trần Thị Hồng Nhung): Booking 1003 (Rate 200,000 * 4 weeks * 1 slot = 800,000 VNĐ)
+    // Bookings 1018 (ACCEPTED) and 1023 (CANCELLED) are NOT counted!
+    assert(bookingSvc->calculateTutorAccumulatedIncome(3) == 800000.0);
+
+    // 3. Exact calculation for Tutor with 2 completed courses (as reported by user)
+    // Tutor 2 (ThS. Lê Văn Toàn):
+    // Booking 1001 (Rate 150,000 * 4 weeks * 1 slot = 600,000 VNĐ)
+    // Booking 1002 (Rate 150,000 * 4 weeks * 1 slot = 600,000 VNĐ)
+    // Booking 1017 (ACCEPTED) is NOT counted!
+    // Total = 1,200,000 VNĐ
+    assert(bookingSvc->calculateTutorAccumulatedIncome(2) == 1200000.0);
+
+    // 4. Exact calculation for Tutor with 3 completed courses
+    // Tutor 12 (Thầy Võ Minh Tuấn): Bookings 1004, 1012, 1016 (Each 180,000 * 4 = 720,000 * 3 = 2,160,000 VNĐ)
+    assert(bookingSvc->calculateTutorAccumulatedIncome(12) == 2160000.0);
+
+    // 5. Excluded non-completed statuses: PENDING, ACCEPTED, REJECTED, CANCELLED, EARLY_TERMINATED
+    // Tutor 16: Booking 1013 (COMPLETED: 170,000 * 4 = 680,000 VNĐ), Booking 1020 (EARLY_TERMINATED: excluded)
+    assert(bookingSvc->calculateTutorAccumulatedIncome(16) == 680000.0);
+
+    // 6. Multi-slot course calculation in isolated sandbox repository
+    {
+        std::error_code ec;
+        auto tempSandbox = std::filesystem::temp_directory_path() / "tutormatch_income_sandbox";
+        std::filesystem::remove_all(tempSandbox, ec);
+        std::filesystem::create_directories(tempSandbox, ec);
+
+        auto sUserRepo = std::make_shared<TutorMatch::FileUserRepository>((tempSandbox / "users.dat").string());
+        auto sReviewRepo = std::make_shared<TutorMatch::FileReviewRepository>((tempSandbox / "reviews.dat").string());
+        auto sCbRepo = std::make_shared<TutorMatch::FileCourseBookingRepository>((tempSandbox / "course_bookings.dat").string());
+        assert(sUserRepo->initialize());
+        assert(sReviewRepo->initialize());
+        assert(sCbRepo->initialize());
+
+        auto sBookingSvc = std::make_shared<TutorMatch::BookingService>(sUserRepo, sReviewRepo, sCbRepo);
+
+        // Create student and tutor
+        Tutor mockTutor(101, "tut_multi", "hash", "tut@tm.vn", "ThS. Multi", "Bio", "Math", 200000.0, 5.0, 0, 0.0, ScheduleGuard::VALID_SCHEDULE_MASK, true);
+        assert(sUserRepo->saveUser(mockTutor));
+        Student mockStudent(201, "stu_multi", "hash", "stu@tm.vn", "Student Multi", 12, ScheduleGuard::VALID_SCHEDULE_MASK, true);
+        assert(sUserRepo->saveUser(mockStudent));
+
+        // Create multi-slot course: 2 slots per week, 8 weeks, rate 200,000
+        // Expected total sessions = 2 * 8 = 16 sessions -> Total cost = 200,000 * 16 = 3,200,000 VNĐ
+        std::vector<std::pair<int, int>> multiSlots = {{0, 1}, {2, 3}};
+        std::string bookMsg;
+        int newBookingId = 0;
+        assert(sBookingSvc->bookCourseMultiSlot(201, 101, "Toán Nâng Cao", multiSlots, "2026-12-01", 8, true, bookMsg, &newBookingId));
+        assert(newBookingId > 0);
+
+        // Still PENDING -> Income = 0
+        assert(sBookingSvc->calculateTutorAccumulatedIncome(101) == 0.0);
+
+        // Accept course -> Still ACCEPTED -> Income = 0
+        assert(sBookingSvc->acceptCourseBooking(101, newBookingId, true, bookMsg));
+        assert(sBookingSvc->calculateTutorAccumulatedIncome(101) == 0.0);
+
+        // Complete course -> Income becomes 3,200,000 VNĐ
+        assert(sBookingSvc->completeCourseBooking(101, UserRole::TUTOR, newBookingId, bookMsg));
+        assert(sBookingSvc->calculateTutorAccumulatedIncome(101) == 3200000.0);
+
+        // Verify persisted in sUserRepo
+        auto reloadedTutor = std::dynamic_pointer_cast<Tutor>(sUserRepo->findUserById(101));
+        assert(reloadedTutor != nullptr);
+        assert(reloadedTutor->getTotalEarnings() == 3200000.0);
+
+        // 7. Idempotence test: calling reconcileTutorEarnings multiple times does not increase earnings
+        for (int i = 0; i < 5; ++i) {
+            sBookingSvc->reconcileTutorEarnings(101);
+            reloadedTutor = std::dynamic_pointer_cast<Tutor>(sUserRepo->findUserById(101));
+            assert(reloadedTutor != nullptr);
+            assert(reloadedTutor->getTotalEarnings() == 3200000.0);
+        }
+
+        // 8. Reconcile All on Startup in sandbox
+        sBookingSvc->reconcileAllTutorEarningsOnStartup();
+        reloadedTutor = std::dynamic_pointer_cast<Tutor>(sUserRepo->findUserById(101));
+        assert(reloadedTutor != nullptr);
+        assert(reloadedTutor->getTotalEarnings() == 3200000.0);
+
+        std::filesystem::remove_all(tempSandbox, ec);
+    }
+
+    // 9. Startup self-healing reconciliation on production dataset
+    bookingSvc->reconcileAllTutorEarningsOnStartup();
+    auto prodTutor2 = std::dynamic_pointer_cast<Tutor>(userRepo->findUserById(2));
+    assert(prodTutor2 != nullptr);
+    assert(prodTutor2->getTotalEarnings() == 1200000.0);
+
+    // 10. GUIBridge Integration Contract: qmlGetTutorOverview and qmlGetTutorStatistics
+    {
+        auto authSvc = std::make_shared<TutorMatch::AuthService>(userRepo);
+        auto userSvc = std::make_shared<TutorMatch::UserService>(userRepo);
+        auto matchSvc = std::make_shared<TutorMatch::MatchingService>(userRepo, cbRepo);
+        auto adminSvc = std::make_shared<TutorMatch::AdminService>(userRepo, reviewRepo, bookingSvc);
+        auto rSvc = std::make_shared<TutorMatch::ReviewService>(reviewRepo, userRepo, cbRepo);
+        auto bridge = std::make_shared<TutorMatch::GUIBridge>();
+        assert(bridge->initialize(authSvc, userSvc, bookingSvc, rSvc, matchSvc, adminSvc));
+
+        std::string authErr;
+        assert(authSvc->login("tutor_math", "pass123", authErr));
+
+        auto overview = bridge->qmlGetTutorOverview();
+        assert(overview["totalEarnings"].toDouble() == 1200000.0);
+        assert(overview["rating"].toDouble() == 5.0);
+
+        auto stats = bridge->qmlGetTutorStatistics();
+        assert(stats["totalEarnings"].toDouble() == 1200000.0);
+    }
+
+    std::cout << "  -> PASS: All 10 Tutor Accumulated Income, Idempotence & GUI Invariants verified 100%!" << std::endl;
+}
+
+void run_test_course_registration_start_date_calculation() {
+    std::cout << "\n[TEST SUITE 33] Verifying Course Registration Start-Date Calculation & Order Invariance..." << std::endl;
+
+    // Fixed deterministic test references:
+    // Friday: 2026-11-13 (dow = 4)
+    // Monday: 2026-11-16 (dow = 0)
+    // Wednesday: 2026-11-18 (dow = 2)
+    // Saturday: 2026-11-14 (dow = 5)
+    // Sunday: 2026-11-15 (dow = 6)
+    // Tuesday: 2026-11-17 (dow = 1)
+    const std::string fridayRef = "2026-11-13";
+    const std::string noonTime = "12:00";
+
+    // ------------------------------------------------------------------------
+    // Scenario 1: Student selects [Wednesday, Monday] on a Friday -> upcoming Monday
+    // ------------------------------------------------------------------------
+    {
+        std::vector<std::pair<int, int>> slotPairs = {{2, 1}, {0, 1}}; // Wednesday (dow 2), Monday (dow 0)
+        std::string earliest = DateUtils::getEarliestValidStartDate(slotPairs, fridayRef, noonTime);
+        assert(earliest == "2026-11-16"); // Upcoming Monday
+
+        auto candidates = DateUtils::getUpcomingStartDatesForSlots(slotPairs, 4, fridayRef, noonTime);
+        assert(candidates.size() == 4);
+        assert(candidates[0] == "2026-11-16"); // Monday
+        assert(candidates[1] == "2026-11-18"); // Wednesday
+        assert(candidates[2] == "2026-11-23"); // Monday
+        assert(candidates[3] == "2026-11-25"); // Wednesday
+    }
+
+    // ------------------------------------------------------------------------
+    // Scenario 2: Student selects [Monday, Wednesday] on a Friday -> upcoming Monday (Order Invariance)
+    // ------------------------------------------------------------------------
+    {
+        std::vector<std::pair<int, int>> slotPairsReversed = {{0, 1}, {2, 1}}; // Monday (dow 0), Wednesday (dow 2)
+        std::string earliest = DateUtils::getEarliestValidStartDate(slotPairsReversed, fridayRef, noonTime);
+        assert(earliest == "2026-11-16");
+
+        auto candidates = DateUtils::getUpcomingStartDatesForSlots(slotPairsReversed, 4, fridayRef, noonTime);
+        assert(candidates.size() == 4);
+        assert(candidates[0] == "2026-11-16");
+        assert(candidates[1] == "2026-11-18");
+        assert(candidates[2] == "2026-11-23");
+        assert(candidates[3] == "2026-11-25");
+
+        // Verify order invariance: identical to Scenario 1
+        std::vector<std::pair<int, int>> slotPairsOriginal = {{2, 1}, {0, 1}};
+        auto candidatesOriginal = DateUtils::getUpcomingStartDatesForSlots(slotPairsOriginal, 4, fridayRef, noonTime);
+        assert(candidates == candidatesOriginal);
+    }
+
+    // ------------------------------------------------------------------------
+    // Scenario 3: Student selects [Wednesday, Saturday] on a Friday -> upcoming Saturday
+    // ------------------------------------------------------------------------
+    {
+        std::vector<std::pair<int, int>> slotPairs = {{2, 2}, {5, 2}}; // Wednesday (dow 2), Saturday (dow 5)
+        std::string earliest = DateUtils::getEarliestValidStartDate(slotPairs, fridayRef, noonTime);
+        assert(earliest == "2026-11-14"); // Saturday (tomorrow)
+
+        auto candidates = DateUtils::getUpcomingStartDatesForSlots(slotPairs, 4, fridayRef, noonTime);
+        assert(candidates.size() == 4);
+        assert(candidates[0] == "2026-11-14"); // Saturday
+        assert(candidates[1] == "2026-11-18"); // Wednesday
+        assert(candidates[2] == "2026-11-21"); // Saturday
+        assert(candidates[3] == "2026-11-25"); // Wednesday
+
+        // Check reversed order invariance as well
+        std::vector<std::pair<int, int>> slotPairsReversed = {{5, 2}, {2, 2}};
+        assert(DateUtils::getEarliestValidStartDate(slotPairsReversed, fridayRef, noonTime) == "2026-11-14");
+        assert(DateUtils::getUpcomingStartDatesForSlots(slotPairsReversed, 4, fridayRef, noonTime) == candidates);
+    }
+
+    // ------------------------------------------------------------------------
+    // Scenario 4: Student selects [Monday, Wednesday] on Monday morning before session time -> Monday (today)
+    // ------------------------------------------------------------------------
+    {
+        const std::string mondayRef = "2026-11-16";
+        const std::string morningTime = "07:00"; // Before Slot 1 start (09:15)
+        std::vector<std::pair<int, int>> slotPairs = {{0, 1}, {2, 1}}; // Monday slot 1 (09:15), Wednesday slot 1 (09:15)
+        
+        assert(!DateUtils::isSlotTimePassed(1, morningTime)); // Slot 1 has not passed at 07:00
+
+        std::string earliest = DateUtils::getEarliestValidStartDate(slotPairs, mondayRef, morningTime);
+        assert(earliest == "2026-11-16"); // Today (Monday) is eligible!
+
+        auto candidates = DateUtils::getUpcomingStartDatesForSlots(slotPairs, 4, mondayRef, morningTime);
+        assert(candidates.size() == 4);
+        assert(candidates[0] == "2026-11-16"); // Monday (today)
+        assert(candidates[1] == "2026-11-18"); // Wednesday
+        assert(candidates[2] == "2026-11-23"); // Monday
+        assert(candidates[3] == "2026-11-25"); // Wednesday
+    }
+
+    // ------------------------------------------------------------------------
+    // Scenario 5: Student selects [Monday, Wednesday] on Monday afternoon after session time -> upcoming Wednesday
+    // ------------------------------------------------------------------------
+    {
+        const std::string mondayRef = "2026-11-16";
+        const std::string afternoonTime = "14:00"; // After Slot 1 start (09:15)
+        std::vector<std::pair<int, int>> slotPairs = {{0, 1}, {2, 1}}; // Monday slot 1 (09:15), Wednesday slot 1 (09:15)
+
+        assert(DateUtils::isSlotTimePassed(1, afternoonTime)); // Slot 1 HAS passed at 14:00
+
+        std::string earliest = DateUtils::getEarliestValidStartDate(slotPairs, mondayRef, afternoonTime);
+        assert(earliest == "2026-11-18"); // Upcoming Wednesday (2 days away)
+
+        auto candidates = DateUtils::getUpcomingStartDatesForSlots(slotPairs, 4, mondayRef, afternoonTime);
+        assert(candidates.size() == 4);
+        assert(candidates[0] == "2026-11-18"); // Wednesday
+        assert(candidates[1] == "2026-11-23"); // Monday
+        assert(candidates[2] == "2026-11-25"); // Wednesday
+        assert(candidates[3] == "2026-11-30"); // Monday
+
+        // Order invariance check on afternoon as well
+        std::vector<std::pair<int, int>> slotPairsReversed = {{2, 1}, {0, 1}};
+        assert(DateUtils::getEarliestValidStartDate(slotPairsReversed, mondayRef, afternoonTime) == "2026-11-18");
+        assert(DateUtils::getUpcomingStartDatesForSlots(slotPairsReversed, 4, mondayRef, afternoonTime) == candidates);
+    }
+
+    // ------------------------------------------------------------------------
+    // Scenario 6: Schedule crossing Sunday/Monday week boundary
+    // ------------------------------------------------------------------------
+    {
+        // 6a: Saturday 2026-11-14, selecting [Sunday, Tuesday] -> Sunday is earliest (tomorrow)
+        const std::string satRef = "2026-11-14";
+        std::vector<std::pair<int, int>> slotPairs6a = {{6, 2}, {1, 2}}; // Sunday (dow 6), Tuesday (dow 1)
+        std::string earliest6a = DateUtils::getEarliestValidStartDate(slotPairs6a, satRef, noonTime);
+        assert(earliest6a == "2026-11-15"); // Tomorrow (Sunday)
+
+        // 6b: Sunday 2026-11-15 night at 23:00 (after Sunday session) -> Tuesday is earliest
+        const std::string sunRef = "2026-11-15";
+        const std::string sunNight = "23:00";
+        std::vector<std::pair<int, int>> slotPairs6b = {{6, 5}, {1, 2}}; // Sunday slot 5 (18:45), Tuesday slot 2 (13:30)
+        assert(DateUtils::isSlotTimePassed(5, sunNight));
+        std::string earliest6b = DateUtils::getEarliestValidStartDate(slotPairs6b, sunRef, sunNight);
+        assert(earliest6b == "2026-11-17"); // Tuesday (in 2 days)
+    }
+
+    // ------------------------------------------------------------------------
+    // Scenario 7: Single selected weekly session (regression check)
+    // ------------------------------------------------------------------------
+    {
+        std::vector<std::pair<int, int>> singleSlot = {{0, 2}}; // Monday slot 2
+        std::string earliest = DateUtils::getEarliestValidStartDate(singleSlot, fridayRef, noonTime);
+        assert(earliest == "2026-11-16");
+
+        auto candidates = DateUtils::getUpcomingStartDatesForSlots(singleSlot, 4, fridayRef, noonTime);
+        assert(candidates.size() == 4);
+        assert(candidates[0] == "2026-11-16");
+        assert(candidates[1] == "2026-11-23");
+        assert(candidates[2] == "2026-11-30");
+        assert(candidates[3] == "2026-12-07");
+    }
+
+    // ------------------------------------------------------------------------
+    // Scenario 8: Adding, removing, and reordering selected sessions updates state correctly
+    // ------------------------------------------------------------------------
+    {
+        std::vector<std::pair<int, int>> state;
+        // Step 1: Add Wednesday
+        state.push_back({2, 1});
+        assert(DateUtils::getEarliestValidStartDate(state, fridayRef, noonTime) == "2026-11-18");
+
+        // Step 2: Add Monday -> earliest shifts to Monday
+        state.push_back({0, 1});
+        assert(DateUtils::getEarliestValidStartDate(state, fridayRef, noonTime) == "2026-11-16");
+
+        // Step 3: Reorder slots in state -> earliest remains Monday
+        std::swap(state[0], state[1]);
+        assert(DateUtils::getEarliestValidStartDate(state, fridayRef, noonTime) == "2026-11-16");
+
+        // Step 4: Remove Monday -> earliest shifts back to Wednesday
+        state.erase(state.begin()); // removes {0, 1}
+        assert(DateUtils::getEarliestValidStartDate(state, fridayRef, noonTime) == "2026-11-18");
+
+        // Step 5: Add Saturday -> Saturday (2026-11-14) is earlier than Wednesday (2026-11-18)
+        state.push_back({5, 1});
+        assert(DateUtils::getEarliestValidStartDate(state, fridayRef, noonTime) == "2026-11-14");
+    }
+
+    // ------------------------------------------------------------------------
+    // Scenario 9: Invalid or empty weeklySchedule input handled gracefully
+    // ------------------------------------------------------------------------
+    {
+        // Empty vector
+        std::vector<std::pair<int, int>> emptySlots;
+        assert(DateUtils::getEarliestValidStartDate(emptySlots, fridayRef, noonTime) == "");
+        assert(DateUtils::getUpcomingStartDatesForSlots(emptySlots, 4, fridayRef, noonTime).empty());
+
+        // Out-of-bounds days/slots
+        std::vector<std::pair<int, int>> invalidSlots = {{-1, 0}, {7, 0}, {0, -1}, {0, 8}};
+        assert(DateUtils::getEarliestValidStartDate(invalidSlots, fridayRef, noonTime) == "");
+        assert(DateUtils::getUpcomingStartDatesForSlots(invalidSlots, 4, fridayRef, noonTime).empty());
+
+        // Invalid date string
+        assert(DateUtils::getNextSlotOccurrence(0, 0, "not-a-date", noonTime) == "");
+    }
+
+    // ------------------------------------------------------------------------
+    // Scenario 10: Generated course schedule starting from calculated start date covers all slots and weeks
+    // ------------------------------------------------------------------------
+    {
+        // 2 slots per week (Monday dow 0, Wednesday dow 2) for 4 weeks -> 8 sessions
+        std::vector<std::pair<int, int>> slotPairs = {{2, 3}, {0, 1}}; // Picked Wednesday first, Monday second
+        std::string calcStartDate = DateUtils::getEarliestValidStartDate(slotPairs, fridayRef, noonTime);
+        assert(calcStartDate == "2026-11-16");
+
+        int weeksCount = 4;
+        auto sessions = DateUtils::generateMultiSlotSessions(calcStartDate, weeksCount, slotPairs);
+        assert(sessions.size() == 8);
+
+        // Verify all sessions are strictly chronological
+        for (size_t i = 1; i < sessions.size(); ++i) {
+            assert(DateUtils::compareDates(sessions[i-1].date, sessions[i].date) <= 0);
+        }
+
+        // Verify session coverage
+        int monCount = 0;
+        int wedCount = 0;
+        for (const auto& s : sessions) {
+            if (s.dayOfWeek == 0 && s.slotIndex == 1) monCount++;
+            if (s.dayOfWeek == 2 && s.slotIndex == 3) wedCount++;
+        }
+        assert(monCount == 4);
+        assert(wedCount == 4);
+        assert(sessions[0].date == "2026-11-16"); // First session is Monday Nov 16
+        assert(sessions[1].date == "2026-11-18"); // Second session is Wednesday Nov 18
+        assert(sessions[7].date == "2026-12-09"); // Last session is Wednesday Dec 09
+
+        // Verify order invariance of session generator
+        std::vector<std::pair<int, int>> reversedSlots = {{0, 1}, {2, 3}};
+        auto reversedSessions = DateUtils::generateMultiSlotSessions(calcStartDate, weeksCount, reversedSlots);
+        assert(sessions.size() == reversedSessions.size());
+        for (size_t i = 0; i < sessions.size(); ++i) {
+            assert(sessions[i].date == reversedSessions[i].date);
+            assert(sessions[i].dayOfWeek == reversedSessions[i].dayOfWeek);
+            assert(sessions[i].slotIndex == reversedSessions[i].slotIndex);
+        }
+    }
+
+    std::cout << "  -> PASS: All 10 Course Registration Start-Date Calculation & Invariance Scenarios verified 100%!" << std::endl;
+}
+
+void run_test_early_termination_and_completion_guard() {
+    std::cout << "\n[TEST SUITE 34] Verifying Consensual Early Termination & Completion Guard Integration..." << std::endl;
+
+    std::string testDir = "tests_scratch_early_term_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    std::error_code ec;
+    std::filesystem::create_directories(testDir, ec);
+
+    std::string uPath = testDir + "/users.dat";
+    std::string cbPath = testDir + "/course_bookings.dat";
+    std::string rPath = testDir + "/reviews.dat";
+
+    auto uRepo = std::make_shared<FileUserRepository>(uPath);
+    auto cbRepo = std::make_shared<FileCourseBookingRepository>(cbPath);
+    auto rRepo = std::make_shared<FileReviewRepository>(rPath);
+    uRepo->initialize();
+    cbRepo->initialize();
+    rRepo->initialize();
+
+    uint64_t allFree = ScheduleGuard::VALID_SCHEDULE_MASK;
+    Tutor t1(10, "tutor_hoa", "pass", "t1@tm.vn", "ThS Lê Hoa", "Bio", "Toán", 200000.0, 5.0, 0, 0.0, allFree, true);
+    Student s1(20, "stu_minh", "pass", "s1@tm.vn", "Nguyễn Minh", 12, allFree, true);
+    uRepo->saveUser(t1);
+    uRepo->saveUser(s1);
+
+    BookingService service(uRepo, rRepo, cbRepo);
+
+    // Create an ACCEPTED multi-slot course
+    std::vector<std::pair<int, int>> slotPairs = {{0, 1}, {2, 3}};
+    int courseId = -1;
+    std::string msg;
+    bool booked = service.bookCourseMultiSlot(20, 10, "Toán 12", slotPairs, "2026-11-16", 4, true, msg, &courseId);
+    assert(booked && courseId > 0);
+    assert(service.acceptCourseBooking(10, courseId, true, msg));
+
+    auto cb = cbRepo->findCourseBookingById(courseId);
+    assert(cb != nullptr && cb->status == "ACCEPTED");
+    assert(cb->earlyTerminationStatus == "NONE");
+
+    // 1. Tutor requests early termination with explicit reason
+    std::string reason = "Bận công tác đột xuất 2 tuần";
+    bool reqOk = service.requestEarlyTermination(10, UserRole::TUTOR, courseId, reason, msg);
+    assert(reqOk);
+    cb = cbRepo->findCourseBookingById(courseId);
+    assert(cb->earlyTerminationStatus == "PENDING");
+    assert(cb->earlyTerminationRequesterId == 10);
+    assert(cb->earlyTerminationReason == reason);
+    assert(cb->status == "ACCEPTED");
+
+    // 2. Guard: Cannot complete course while early termination is PENDING
+    // Test Student attempt:
+    bool stuCompleteOk = service.completeCourseBooking(20, UserRole::STUDENT, courseId, msg);
+    assert(!stuCompleteOk);
+    assert(msg == "Khóa học đang có yêu cầu kết thúc sớm chờ phản hồi, không thể hoàn thành!");
+
+    // Test Tutor attempt:
+    bool tutCompleteOk = service.completeCourseBooking(10, UserRole::TUTOR, courseId, msg);
+    assert(!tutCompleteOk);
+    assert(msg == "Khóa học đang có yêu cầu kết thúc sớm chờ phản hồi, không thể hoàn thành!");
+
+    // Verify course remains ACCEPTED, not completed
+    cb = cbRepo->findCourseBookingById(courseId);
+    assert(cb->status == "ACCEPTED");
+
+    // 3. Guard: Requester (Tutor) cannot respond to own request
+    bool selfRespOk = service.respondEarlyTermination(10, UserRole::TUTOR, courseId, true, msg);
+    assert(!selfRespOk);
+    assert(msg == "Bạn không thể tự phản hồi yêu cầu do chính mình gửi!");
+
+    // 4. Student rejects early termination
+    bool rejectOk = service.respondEarlyTermination(20, UserRole::STUDENT, courseId, false, msg);
+    assert(rejectOk);
+    cb = cbRepo->findCourseBookingById(courseId);
+    assert(cb->status == "ACCEPTED");
+    assert(cb->earlyTerminationStatus == "REJECTED");
+    assert(cb->earlyTerminationReason == reason); // Reason preserved for history/display
+
+    // 5. After rejection, completion guard is lifted: completeCourseBooking now succeeds!
+    bool completeAfterReject = service.completeCourseBooking(20, UserRole::STUDENT, courseId, msg);
+    assert(completeAfterReject);
+    cb = cbRepo->findCourseBookingById(courseId);
+    assert(cb->status == "COMPLETED");
+
+    // 6. Test Scenario B: Student requests early termination, Tutor agrees
+    int course2Id = -1;
+    bool booked2 = service.bookCourseMultiSlot(20, 10, "Toán Luyện Thi", slotPairs, "2026-11-16", 4, true, msg, &course2Id);
+    assert(booked2 && course2Id > 0);
+    assert(service.acceptCourseBooking(10, course2Id, true, msg));
+
+    std::string stuReason = "Lịch học trùng với lịch thi đội tuyển của trường";
+    assert(service.requestEarlyTermination(20, UserRole::STUDENT, course2Id, stuReason, msg));
+    auto cb2 = cbRepo->findCourseBookingById(course2Id);
+    assert(cb2->earlyTerminationStatus == "PENDING");
+    assert(cb2->earlyTerminationRequesterId == 20);
+    assert(cb2->earlyTerminationReason == stuReason);
+
+    // Tutor cannot complete course while pending
+    assert(!service.completeCourseBooking(10, UserRole::TUTOR, course2Id, msg));
+
+    // Student cannot self-respond
+    assert(!service.respondEarlyTermination(20, UserRole::STUDENT, course2Id, true, msg));
+
+    // Tutor agrees to early termination
+    bool agreeOk = service.respondEarlyTermination(10, UserRole::TUTOR, course2Id, true, msg);
+    assert(agreeOk);
+
+    cb2 = cbRepo->findCourseBookingById(course2Id);
+    assert(cb2->status == "EARLY_TERMINATED");
+    assert(cb2->earlyTerminationStatus == "ACCEPTED");
+    assert(cb2->earlyTerminationReason == stuReason);
+    assert(!cb2->actualEndDate.empty());
+
+    // 7. Invalid requests: Cannot request early termination on non-ACCEPTED courses
+    assert(!service.requestEarlyTermination(20, UserRole::STUDENT, course2Id, "New reason", msg));
+    assert(!service.requestEarlyTermination(20, UserRole::STUDENT, courseId, "New reason", msg));
+
+    std::filesystem::remove_all(testDir, ec);
+    std::cout << "  -> PASS: Consensual early termination, completion guard, and state transitions verified 100%!" << std::endl;
+}
+
 int main() {
     std::cout << "============================================================" << std::endl;
     std::cout << "    TUTORMATCH SOLID ARCHITECTURE VERIFICATION TEST RUNNER   " << std::endl;
@@ -4293,6 +4975,11 @@ int main() {
     run_test_smartmatch_mandatory_subject_filtering();
     run_test_tutor_search_engine_normalization_semantic_and_ranking();
     run_test_tutor_verification_decommission();
+    run_test_generic_data_structures_invariants();
+    run_test_admin_permission_level_removal_and_authorization();
+    run_test_tutor_accumulated_income_and_reconciliation();
+    run_test_course_registration_start_date_calculation();
+    run_test_early_termination_and_completion_guard();
 
     std::cout << "  >>> ALL TEST SUITES PASSED SUCCESSFULLY! (100% PASS) <<<  " << std::endl;
     std::cout << "============================================================" << std::endl;

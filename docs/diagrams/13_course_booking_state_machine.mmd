@@ -1,0 +1,47 @@
+stateDiagram-v2
+    %% =========================================================================
+    %% DIAGRAM 13: COURSEBOOKING COMPLETE LIFECYCLE STATE MACHINE
+    %% =========================================================================
+
+    [*] --> PENDING: Học viên tạo yêu cầu (studentAcknowledged=true, V1)
+
+    state PENDING {
+        [*] --> Awaiting_Tutor_Decision
+        Awaiting_Tutor_Decision: Chờ Gia sư xem xét yêu cầu và cam kết
+    }
+
+    PENDING --> ACCEPTED: Gia sư Chấp nhận (tutorAcknowledged=true, V1)
+    PENDING --> REJECTED: Gia sư Từ chối yêu cầu
+    PENDING --> CANCELLED: Học viên Hủy yêu cầu trước khi gia sư duyệt
+
+    state ACCEPTED {
+        [*] --> In_Progress: Khóa học chính thức diễn ra theo các tuần
+        In_Progress --> Early_Termination_Requested: Một bên đề nghị kết thúc sớm
+        Early_Termination_Requested --> In_Progress: Bên kia từ chối kết thúc sớm
+    }
+
+    ACCEPTED --> COMPLETED: Hết thời gian hoặc Hoàn thành (completeCourseBooking / autoCompleteExpiredCourses) [kích hoạt reconcileTutorEarnings]
+    ACCEPTED --> EARLY_TERMINATED: Hai bên đồng thuận kết thúc sớm (Both parties agree)
+    ACCEPTED --> CANCELLED: Quản trị viên can thiệp (Admin force terminate)
+
+    state COMPLETED {
+        [*] --> Eligible_For_Review: Học viên được quyền viết nhận xét & chấm sao (1 lần duy nhất)
+        [*] --> Accumulated_Income_Recognized: Cập nhật tổng học phí tích lũy vào users.dat
+    }
+
+    state EARLY_TERMINATED {
+        [*] --> Eligible_For_Review_Early: Học viên vẫn được quyền viết nhận xét & chấm sao
+    }
+
+    state REJECTED {
+        [*] --> Terminal_Rejected: Không tạo lịch học, kết thúc vòng đời
+    }
+
+    state CANCELLED {
+        [*] --> Terminal_Cancelled: Toàn bộ ca học được giải phóng ngay lập tức
+    }
+
+    COMPLETED --> [*]
+    EARLY_TERMINATED --> [*]
+    REJECTED --> [*]
+    CANCELLED --> [*]

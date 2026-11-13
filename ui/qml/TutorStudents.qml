@@ -230,6 +230,7 @@ Item {
                                     }
 
                                     Button {
+                                        visible: modelData.earlyTerminationStatus !== "PENDING"
                                         text: "🏁 Hoàn thành khóa học"
                                         Layout.alignment: Qt.AlignVCenter
                                         onClicked: {

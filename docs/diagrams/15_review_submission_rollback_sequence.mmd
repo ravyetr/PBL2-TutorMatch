@@ -1,0 +1,61 @@
+sequenceDiagram
+    %% =========================================================================
+    %% DIAGRAM 15: REVIEW SUBMISSION WITH ADR-007 COMPENSATING ROLLBACK
+    %% =========================================================================
+    autonumber
+    actor Student as Học viên (QML UI)
+    participant Modal as ReviewModal.qml
+    participant Bridge as GUIBridge (Presentation)
+    participant RevSvc as ReviewService (Business)
+    participant RevRepo as IReviewRepository (DAL)
+    participant UserRepo as IUserRepository (DAL)
+    participant DiskReviews as reviews.dat
+    participant DiskUsers as users.dat
+
+    Student->>Modal: Chọn điểm đánh giá (1-5 sao) & nhập nhận xét (Không để trống)
+    Student->>Modal: Nhấn "Gửi Đánh Giá"
+    Modal->>Bridge: qmlSubmitReview(bookingId, ratingScore, comment)
+
+    Bridge->>RevSvc: submitReview(studentId, bookingId, ratingScore, comment, outMsg)
+    RevSvc->>RevSvc: lock_guard<recursive_mutex> lock(reviewMutex)
+
+    Note over RevSvc: 1. Kiểm tra tính hợp lệ & Điều kiện (Eligibility)
+    RevSvc->>RevSvc: Validate: ratingScore in [1..5] & !comment.empty()
+    RevSvc->>RevSvc: isEligibleForReview(studentId, bookingId, reason)
+    Note over RevSvc: Khóa học phải là COMPLETED hoặc EARLY_TERMINATED<br/>và chưa từng có review nào cho bookingId này
+
+    Note over RevSvc,RevRepo: 2. Lưu bản ghi Review mới
+    RevSvc->>RevRepo: getNextReviewId()
+    RevRepo-->>RevSvc: nextRId (ví dụ: 1016)
+    RevSvc->>RevSvc: Khởi tạo Review(nextRId, bookingId, studentId, tutorId, name, score, comment, date)
+    RevSvc->>RevRepo: saveReview(rev)
+    RevRepo->>DiskReviews: Ghi bản ghi vào reviews.dat
+    DiskReviews-->>RevRepo: Ghi thành công
+
+    Note over RevSvc,UserRepo: 3. Tính toán lại điểm Rating trung bình của Gia sư
+    RevSvc->>RevRepo: getReviewsByTutorId(tutorId)
+    RevRepo-->>RevSvc: Danh sách tất cả review của gia sư (bao gồm review vừa tạo)
+    RevSvc->>RevSvc: double sum = sum(ratings); newAvg = sum / count;
+    RevSvc->>UserRepo: findUserById(tutorId)
+    UserRepo-->>RevSvc: tutorUser
+    RevSvc->>RevSvc: tutor->setRating(newAvg); tutor->setTotalReviews(count);
+
+    Note over RevSvc,UserRepo: 4. Cập nhật hồ sơ Gia sư & Cơ chế Bồi hoàn ADR-007
+    RevSvc->>UserRepo: updateUser(*tutor)
+
+    alt Trường hợp Ghi User thất bại (Lỗi đĩa / Xung đột)
+        UserRepo-->>RevSvc: return false
+        Note over RevSvc,RevRepo: ADR-007 COMPENSATING ROLLBACK KÍCH HOẠT!
+        RevSvc->>RevRepo: deleteReview(nextRId)
+        RevRepo->>DiskReviews: Xóa bản ghi review vừa lưu để tránh rác lệch pha dữ liệu
+        RevSvc-->>Bridge: return false ("Lỗi khi cập nhật điểm! Thao tác đã được hoàn tác an toàn.")
+        Bridge-->>Modal: Báo lỗi & dữ liệu không bị sai lệch
+    else Trường hợp Ghi User thành công
+        UserRepo->>DiskUsers: Cập nhật rating và totalReviews vào users.dat
+        DiskUsers-->>UserRepo: Ghi thành công
+        UserRepo-->>RevSvc: return true
+        RevSvc-->>Bridge: return true ("Gửi đánh giá và nhận xét thành công!")
+        Bridge->>Modal: Q_EMIT dataChanged()
+        Bridge-->>Modal: return true
+        Modal-->>Student: Đóng modal & hiển thị thông báo thành công
+    end

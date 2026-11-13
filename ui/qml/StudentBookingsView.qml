@@ -500,6 +500,107 @@ Item {
                                 }
                             }
 
+                            // Early Termination Information Box
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: earlyTermCol.implicitHeight + 20
+                                radius: 8
+                                border.width: 1
+                                visible: (modelData.status === "ACCEPTED" && modelData.earlyTerminationStatus === "PENDING") ||
+                                         (modelData.status === "EARLY_TERMINATED") ||
+                                         (modelData.status === "ACCEPTED" && modelData.earlyTerminationStatus === "REJECTED")
+
+                                color: (modelData.earlyTerminationStatus === "PENDING") ?
+                                           (modelData.canRespondEarlyTermination ? "#fff7e6" : "#e6f7ff") :
+                                       (modelData.status === "EARLY_TERMINATED") ? "#fff7e6" : "#f5f5f5"
+                                border.color: (modelData.earlyTerminationStatus === "PENDING") ?
+                                                  (modelData.canRespondEarlyTermination ? "#ffa940" : "#91d5ff") :
+                                              (modelData.status === "EARLY_TERMINATED") ? "#d46b08" : "#d9d9d9"
+
+                                ColumnLayout {
+                                    id: earlyTermCol
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 10
+                                    spacing: 5
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+
+                                        Text {
+                                            text: (modelData.earlyTerminationStatus === "PENDING") ?
+                                                      (modelData.canRespondEarlyTermination ? "⚠️ YÊU CẦU KẾT THÚC KHÓA HỌC SỚM" : "⏳ YÊU CẦU KẾT THÚC SỚM ĐÃ GỬI") :
+                                                  (modelData.status === "EARLY_TERMINATED") ? "⛔ KHÓA HỌC ĐÃ KẾT THÚC SỚM" :
+                                                  "ℹ️ YÊU CẦU KẾT THÚC SỚM ĐÃ BỊ TỪ CHỐI"
+                                            font.bold: true
+                                            font.pixelSize: 11
+                                            color: (modelData.earlyTerminationStatus === "PENDING") ?
+                                                       (modelData.canRespondEarlyTermination ? "#d46b08" : "#096dd9") :
+                                                   (modelData.status === "EARLY_TERMINATED") ? "#cf1322" : "#595959"
+                                        }
+
+                                        Item { Layout.fillWidth: true }
+
+                                        // Status badge
+                                        Rectangle {
+                                            implicitWidth: earlyTermStatusText.implicitWidth + 12
+                                            height: 20
+                                            radius: 4
+                                            color: (modelData.earlyTerminationStatus === "PENDING") ?
+                                                       (modelData.canRespondEarlyTermination ? "#faad14" : "#1890ff") :
+                                                   (modelData.status === "EARLY_TERMINATED") ? "#ff4d4f" : "#8c8c8c"
+
+                                            Text {
+                                                id: earlyTermStatusText
+                                                anchors.centerIn: parent
+                                                text: (modelData.earlyTerminationStatus === "PENDING") ?
+                                                          (modelData.canRespondEarlyTermination ? "Đang chờ học sinh phản hồi" : "Đang chờ gia sư phản hồi") :
+                                                      (modelData.status === "EARLY_TERMINATED") ? "Đã đồng thuận kết thúc" :
+                                                      "Đã từ chối"
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                                color: "#ffffff"
+                                            }
+                                        }
+                                    }
+
+                                    // Requester info
+                                    Text {
+                                        Layout.fillWidth: true
+                                        visible: modelData.earlyTerminationStatus === "PENDING"
+                                        text: "• Người đề nghị: " + (modelData.canRespondEarlyTermination ?
+                                                                       ("Gia sư (" + (modelData.tutorName || "Gia sư") + ")") :
+                                                                       "Bạn (Học sinh)")
+                                        font.pixelSize: 11
+                                        color: Theme.textDark
+                                    }
+
+                                    // Actual end date if terminated
+                                    Text {
+                                        Layout.fillWidth: true
+                                        visible: modelData.status === "EARLY_TERMINATED" && modelData.actualEndDate !== ""
+                                        text: "• Ngày kết thúc thực tế: " + modelData.actualEndDate
+                                        font.pixelSize: 11
+                                        color: Theme.textDark
+                                    }
+
+                                    // Reason display (word wrap, only if not empty)
+                                    Text {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                        visible: modelData.earlyTerminationReason !== undefined &&
+                                                 modelData.earlyTerminationReason !== null &&
+                                                 modelData.earlyTerminationReason.trim() !== ""
+                                        text: "• Lý do kết thúc sớm: " + modelData.earlyTerminationReason
+                                        font.pixelSize: 11
+                                        font.italic: true
+                                        color: Theme.textDark
+                                    }
+                                }
+                            }
+
                             // Review Display Snippet (If Completed and Reviewed)
                             Rectangle {
                                 Layout.fillWidth: true
@@ -571,7 +672,7 @@ Item {
 
                                 // ACCEPTED ACTIONS
                                 Button {
-                                    visible: modelData.status === "ACCEPTED"
+                                    visible: modelData.status === "ACCEPTED" && modelData.earlyTerminationStatus !== "PENDING"
                                     text: "Hoàn thành khóa học"
                                     focusPolicy: Qt.NoFocus
                                     implicitWidth: 150
@@ -597,9 +698,9 @@ Item {
 
                                 Button {
                                     visible: modelData.status === "ACCEPTED"
-                                    text: "Xem vị trí trên TKB"
+                                    text: "Xem lịch học trên thời khóa biểu"
                                     focusPolicy: Qt.NoFocus
-                                    implicitWidth: 140
+                                    implicitWidth: 200
                                     implicitHeight: 36
                                     contentItem: Text {
                                         text: parent.text
@@ -618,32 +719,6 @@ Item {
                                     onClicked: {
                                         // Switch to Tab 0 (Hồ sơ & Lịch học)
                                         studentBookingsView.navigateToTabRequested(0)
-                                    }
-                                }
-
-                                Button {
-                                    visible: modelData.status === "PENDING"
-                                    text: "Hủy yêu cầu"
-                                    focusPolicy: Qt.NoFocus
-                                    implicitWidth: 110
-                                    implicitHeight: 36
-                                    contentItem: Text {
-                                        text: parent.text
-                                        font.bold: true
-                                        font.pixelSize: 11
-                                        color: "#cf1322"
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
-                                    background: Rectangle {
-                                        radius: 8
-                                        color: parent.down ? "#fff1f0" : (parent.hovered ? "#fff1f0" : Theme.bgApp)
-                                        border.color: "#ff4d4f"
-                                        border.width: 1
-                                    }
-                                    onClicked: {
-                                        studentBookingsView.selectedBookingToCancel = modelData
-                                        cancelConfirmModal.visible = true
                                     }
                                 }
 
@@ -697,9 +772,9 @@ Item {
                                     spacing: 6
 
                                     Button {
-                                        text: "Đồng ý kết thúc"
+                                        text: "Đồng ý"
                                         focusPolicy: Qt.NoFocus
-                                        implicitWidth: 120
+                                        implicitWidth: 90
                                         implicitHeight: 36
                                         contentItem: Text { text: parent.text; font.bold: true; font.pixelSize: 11; color: "#FFFFFF"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                                         background: Rectangle { radius: 8; color: "#d46b08" }

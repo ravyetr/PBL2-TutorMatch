@@ -1,0 +1,63 @@
+graph TB
+    %% =========================================================================
+    %% DIAGRAM 01: TUTORMATCH SYSTEM CONTEXT DIAGRAM
+    %% =========================================================================
+    title["<b>SƠ ĐỒ BỐI CẢNH HỆ THỐNG TUTORMATCH (SYSTEM CONTEXT DIAGRAM)</b>"]
+
+    subgraph External_Users ["Tác nhân người dùng ngoài (External Actors)"]
+        Student["👨‍🎓 Học viên (Student)<br/>- Khám phá gia sư<br/>- Gợi ý SmartMatch<br/>- Đặt khóa học định kỳ<br/>- Đánh giá & nhận xét"]
+        Tutor["👨‍🏫 Gia sư (Tutor)<br/>- Thiết lập hồ sơ & chuyên môn<br/>- Quản lý lịch rảnh 56 ca<br/>- Tiếp nhận & duyệt khóa học<br/>- Thống kê thu nhập & đánh giá"]
+        Admin["🛡️ Quản trị viên (Admin)<br/>- Quản trị tài khoản người dùng<br/>- Khóa / Mở khóa tài khoản<br/>- Giám sát số liệu kết nối<br/>- Xóa đánh giá vi phạm"]
+    end
+
+    subgraph System_Boundary ["Ranh giới hệ thống TutorMatch (System Boundary)"]
+        subgraph GUI_App ["Ứng dụng Desktop Qt Quick / QML (GUI-Only)"]
+            UI_Layer["Tầng Trình Diễn (Presentation Layer)<br/>27 tệp QML + GUIBridge (C++/QObject)"]
+            Business_Layer["Tầng Nghiệp Vụ (Business Logic Layer)<br/>6 Dịch vụ (Services) + Động cơ Thuật toán (Matching, Search, Schedule)"]
+            DAL_Layer["Tầng Truy Xuất Dữ Liệu (Data Access Layer)<br/>Kho lưu trữ FileRepository + Bộ tuần tự hóa Serializers"]
+        end
+    end
+
+    subgraph Storage_Boundary ["Hệ thống Lưu trữ Dữ liệu Flat-File (.dat CSV)"]
+        FileUsers["📄 data/users.dat<br/>(Học viên, Gia sư, Quản trị viên)"]
+        FileBookings["📄 data/course_bookings.dat<br/>(Hợp đồng khóa học định kỳ 4/8/12 tuần)"]
+        FileReviews["📄 data/reviews.dat<br/>(Bản ghi đánh giá & xếp hạng sao)"]
+        FileSeed["📁 data/seed/<br/>(Bộ dữ liệu chuẩn mực khởi tạo lần đầu)"]
+    end
+
+    subgraph Diagnostic_Tooling ["Công cụ Chẩn đoán & Kiểm thử Độc lập"]
+        Inspector["🔍 TutorMatch_Inspector<br/>Công cụ chẩn đoán tính toàn vẹn dữ liệu (Read-Only)"]
+        Tests["🧪 TutorMatch_Tests<br/>Bộ 30 Test Suites kiểm thử tự động toàn diện"]
+    end
+
+    %% Tương tác người dùng với UI
+    Student -->|Tương tác GUI qua QML Views| UI_Layer
+    Tutor -->|Tương tác GUI qua QML Views| UI_Layer
+    Admin -->|Tương tác GUI qua QML Views| UI_Layer
+
+    %% Luồng nội bộ
+    UI_Layer -->|Gọi hàm Q_INVOKABLE| Business_Layer
+    Business_Layer -->|Thao tác qua IRepository| DAL_Layer
+
+    %% Thao tác file
+    DAL_Layer -->|Đọc / Ghi nguyên tử CSV| FileUsers
+    DAL_Layer -->|Đọc / Ghi nguyên tử CSV| FileBookings
+    DAL_Layer -->|Đọc / Ghi nguyên tử CSV| FileReviews
+    DAL_Layer -.->|Tự động sao chép khi khởi tạo| FileSeed
+
+    %% Tương tác công cụ ngoài
+    Inspector -->|Đọc kiểm toán độc lập| FileUsers
+    Inspector -->|Đọc kiểm toán độc lập| FileBookings
+    Inspector -->|Đọc kiểm toán độc lập| FileReviews
+    Tests -->|Kiểm thử đơn vị & tích hợp| Business_Layer
+    Tests -->|Kiểm thử lưu trữ & tuần tự| DAL_Layer
+
+    classDef actorStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
+    classDef systemStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
+    classDef storageStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef toolStyle fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+
+    class Student,Tutor,Admin actorStyle;
+    class GUI_App,UI_Layer,Business_Layer,DAL_Layer systemStyle;
+    class FileUsers,FileBookings,FileReviews,FileSeed storageStyle;
+    class Inspector,Tests toolStyle;

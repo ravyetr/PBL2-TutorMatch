@@ -1,0 +1,70 @@
+graph TD
+    %% =========================================================================
+    %% DIAGRAM 19: DATA FLOW DIAGRAM (DFD LEVEL 0 & 1)
+    %% =========================================================================
+    title["<b>SƠ ĐỒ LUỒNG DỮ LIỆU HỆ THỐNG (DATA FLOW DIAGRAM - DFD)</b>"]
+
+    subgraph Actors ["Tác Nhân Ngoài"]
+        S["Học viên (Student)"]
+        T["Gia sư (Tutor)"]
+        A["Quản trị viên (Admin)"]
+    end
+
+    subgraph Processes ["Tiến Trình Xử Lý Nghiệp Vụ (Processes)"]
+        P1["1.0 Xác Thực & Quản Lý Phiên<br/>(AuthService / UserService)"]
+        P2["2.0 Tìm Kiếm & Gợi Ý Gia Sư<br/>(TutorSearchMatcher / MatchingEngine)"]
+        P3["3.0 Đặt & Quản Lý Vòng Đời Khóa Học<br/>(BookingService / ScheduleGuard)"]
+        P4["4.0 Đánh Giá, Xếp Hạng & Bồi Hoàn<br/>(ReviewService)"]
+        P5["5.0 Quản Trị & Kiểm Toán Nền Tảng<br/>(AdminService / DataFileInspector)"]
+    end
+
+    subgraph Data_Stores ["Kho Dữ Liệu Tệp (Flat-File Data Stores)"]
+        D1[("D1: users.dat<br/>Tài khoản, Hồ sơ, Điểm Rating, Lịch 56 ca")]
+        D2[("D2: course_bookings.dat<br/>Khóa học, Trạng thái, Cam kết V1, Kết thúc sớm")]
+        D3[("D3: reviews.dat<br/>Đánh giá sao, Nhận xét")]
+    end
+
+    %% Luồng 1: Xác thực
+    S -->|Thông tin đăng ký, Đăng nhập| P1
+    T -->|Thông tin gia sư, Đăng nhập| P1
+    A -->|Thông tin admin, Đăng nhập| P1
+    P1 -->|Lưu tài khoản, Đọc mật khẩu hash| D1
+    P1 -->|Phiên đăng nhập thành công| S
+    P1 -->|Phiên đăng nhập thành công| T
+    P1 -->|Phiên đăng nhập thành công| A
+
+    %% Luồng 2: Tìm kiếm & Matching
+    S -->|Từ khóa, Bộ lọc môn/giá/lịch| P2
+    D1 -->|Danh sách gia sư, Lịch rảnh| P2
+    D2 -->|Lịch bận các khóa đã duyệt| P2
+    P2 -->|Danh sách gia sư phù hợp / Top SmartMatch| S
+
+    %% Luồng 3: Đặt lịch khóa học
+    S -->|Yêu cầu khóa học, Cam kết V1| P3
+    T -->|Chấp nhận / Từ chối / Kết thúc sớm| P3
+    P3 <-->|Kiểm tra & Ghi nhận trạng thái| D2
+    P3 -->|Cập nhật tổng thu nhập| D1
+    P3 -->|Cập nhật thời khóa biểu tuần| S
+    P3 -->|Cập nhật thời khóa biểu tuần| T
+
+    %% Luồng 4: Đánh giá & Rating
+    S -->|Điểm sao 1-5, Nhận xét| P4
+    D2 -->|Kiểm tra điều kiện COMPLETED/EARLY| P4
+    P4 -->|Lưu đánh giá mới| D3
+    P4 -->|Cập nhật rating mới / Rollback| D1
+    P4 -->|Hiển thị phản hồi| T
+
+    %% Luồng 5: Quản trị
+    A -->|Khóa/Mở khóa tài khoản, Xóa review| P5
+    P5 <-->|Cập nhật trạng thái người dùng| D1
+    P5 <-->|Hủy khóa học cưỡng chế| D2
+    P5 <-->|Xóa review vi phạm| D3
+    P5 -->|Thống kê hệ thống, Báo cáo kiểm toán| A
+
+    classDef actorStyle fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef processStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
+    classDef storeStyle fill:#fff8e1,stroke:#fbc02d,stroke-width:2px;
+
+    class S,T,A actorStyle;
+    class P1,P2,P3,P4,P5 processStyle;
+    class D1,D2,D3 storeStyle;

@@ -1,0 +1,62 @@
+classDiagram
+    %% =========================================================================
+    %% DIAGRAM 10: MATCHING ENGINE & ALGORITHMIC ARCHITECTURE
+    %% =========================================================================
+
+    class IMatchingStrategy {
+        <<interface>>
+        +getStrategyName()* string
+        +calculateScore(Student&, Tutor&)* TutorMatchResult
+        +calculateScoreWithCriteria(SmartMatchCriteria&, Tutor&, vector~CourseBooking~&)* TutorMatchResult
+    }
+
+    class WeightedScoreMatchingStrategy {
+        -double weightSchedule
+        -double weightPrice
+        -double weightRating
+        -double weightExperience
+        -double weightCredibility
+        +getStrategyName() string
+        +calculateScore(Student&, Tutor&) TutorMatchResult
+        +calculateScoreWithCriteria(SmartMatchCriteria&, Tutor&, vector~CourseBooking~&) TutorMatchResult
+    }
+
+    class MatchingEngine {
+        -unique_ptr~IMatchingStrategy~ activeStrategy
+        +setStrategy(unique_ptr~IMatchingStrategy~) void
+        +getStrategy() IMatchingStrategy*
+        +isEligible(SmartMatchCriteria&, Tutor&, vector~CourseBooking~&, vector~pair~int,int~~&) bool$
+        +findTopMatchesWithCriteria(SmartMatchCriteria&, vector~shared_ptr~Tutor~~&, vector~CourseBooking~&, size_t) vector~TutorMatchResult~
+        +findTopMatches(Student&, vector~shared_ptr~Tutor~~&, size_t) vector~TutorMatchResult~
+    }
+
+    class MaxHeap~T~ {
+        -vector~T~ heap
+        -siftUp(size_t) void
+        -siftDown(size_t) void
+        +push(T) void
+        +pop() T
+        +top() T
+        +extractSortedTopK(size_t) vector~T~
+        +size() size_t
+        +empty() bool
+    }
+
+    class SubjectTaxonomy {
+        <<utility>>
+        +normalizeVietnamese(string) string
+        +removeAccents(string) string
+        +isCanonicalSubjectMatch(string, string) bool
+    }
+
+    class TutorSearchMatcher {
+        <<utility>>
+        +evaluateTutor(string, Tutor&) TutorMatchEvaluation
+        +searchTutors(string, vector~shared_ptr~Tutor~~&) vector~TutorMatchEvaluation~
+    }
+
+    IMatchingStrategy <|.. WeightedScoreMatchingStrategy : implements
+    MatchingEngine --> IMatchingStrategy : aggregates
+    MatchingEngine ..> MaxHeap : ranks top K via
+    MatchingEngine ..> SubjectTaxonomy : filters subject via
+    TutorSearchMatcher ..> SubjectTaxonomy : normalizes via

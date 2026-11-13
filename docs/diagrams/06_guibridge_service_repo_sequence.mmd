@@ -1,0 +1,44 @@
+sequenceDiagram
+    %% =========================================================================
+    %% DIAGRAM 06: STANDARD CROSS-LAYER CALL SEQUENCE
+    %% =========================================================================
+    autonumber
+    actor UI as Thành phần QML (QML Component)
+    participant Bridge as GUIBridge (Presentation Adapter)
+    participant Service as Business Service (BLL)
+    participant Domain as Domain Entity / Algorithm
+    participant IRepo as IRepository Interface (DAL)
+    participant FileRepo as FileRepository Implementation
+    participant Ser as Serializer
+    participant Disk as Physical Storage (.dat)
+
+    Note over UI,Bridge: TẦNG TRÌNH DIỄN (PL)
+    UI->>Bridge: guiBridge.qmlMethod(args)
+    Bridge->>Bridge: Kiểm tra phiên đăng nhập (currentUser)
+    Bridge->>Bridge: Chuyển đổi kiểu Qt (QString, QVariant -> std::string)
+
+    Note over Bridge,Service: VƯỢT TẦNG HỢP LỆ (DIP)
+    Bridge->>Service: service->businessMethod(stdArgs, outMsg)
+
+    Note over Service,Domain: TẦNG NGHIỆP VỤ (BLL)
+    Service->>Service: Khóa mutex luồng (lock_guard<recursive_mutex>)
+    Service->>Domain: Kiểm tra quy tắc nghiệp vụ (Validation, Business Rules)
+    Service->>Domain: Thực thi tính toán (Math, Algorithms, State Machine)
+
+    Note over Service,IRepo: VƯỢT TẦNG HỢP LỆ (DIP Qua Interface)
+    Service->>IRepo: repository->saveEntity(entity) / findById(id)
+    IRepo->>FileRepo: Triển khai cụ thể xử lý
+    FileRepo->>Ser: Serializer::toCsv(entity)
+    Ser-->>FileRepo: Trả về chuỗi CSV chuẩn hóa
+
+    Note over FileRepo,Disk: TẦNG TRUY XUẤT DỮ LIỆU (DAL)
+    FileRepo->>Disk: Ghi tạm thời file .tmp
+    FileRepo->>Disk: Đổi tên nguyên tử (Atomic Replace) sang file .dat
+    Disk-->>FileRepo: Hoàn tất ghi dữ liệu
+    FileRepo-->>Service: return true
+
+    Service-->>Bridge: return true (kèm outMsg)
+    Bridge->>Bridge: Cập nhật statusMessageStr
+    Bridge->>UI: Q_EMIT statusMessageChanged()
+    Bridge->>UI: Q_EMIT dataChanged()
+    Bridge-->>UI: return true (QML cập nhật UI State)

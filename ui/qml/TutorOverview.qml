@@ -113,10 +113,10 @@ Item {
                 }
             }
 
-            // 2. Metric Cards Grid (4 Summary Cards)
+            // 2. Metric Cards Grid (5 Summary Cards)
             GridLayout {
                 Layout.fillWidth: true
-                columns: 4
+                columns: (width > 1050) ? 5 : (width > 650 ? 3 : 2)
                 rowSpacing: 12
                 columnSpacing: 12
 
@@ -187,6 +187,44 @@ Item {
                         Text { text: (tutorOverviewRoot.overviewData.rating || 5.0).toFixed(1) + " ★ (" + (tutorOverviewRoot.overviewData.totalReviews || 0) + ")"; font.bold: true; font.pixelSize: 22; color: "#d97706" }
                     }
                 }
+
+                // Card 5: Accumulated Income
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 90
+                    radius: 10
+                    color: Theme.cardBg
+                    border.color: Theme.cardBorder
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 16
+                        spacing: 4
+                        Text { text: "TỔNG HỌC PHÍ TÍCH LŨY"; font.pixelSize: 11; font.bold: true; color: Theme.textMuted }
+                        Text {
+                            text: ((tutorOverviewRoot.overviewData.totalEarnings || 0).toLocaleString(Qt.locale("vi_VN"), 'f', 0)) + " VNĐ"
+                            font.bold: true
+                            font.pixelSize: 20
+                            color: "#16a34a"
+                        }
+                    }
+
+                    ToolTip.visible: mouseAreaIncome.containsMouse
+                    ToolTip.text: "Giá trị học phí của các khóa học đã hoàn thành theo thỏa thuận; không đồng nghĩa với số tiền đã thực nhận."
+
+                    MouseArea {
+                        id: mouseAreaIncome
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.NoButton
+                    }
+                }
+            }
+
+            Text {
+                text: "💡 Lưu ý: Tổng học phí tích lũy được tính từ các khóa học đã hoàn thành (COMPLETED) theo thỏa thuận, không đồng nghĩa với số tiền đã thực nhận."
+                font.pixelSize: 11
+                color: Theme.textMuted
             }
 
             // 3. Quick Action Toolbar

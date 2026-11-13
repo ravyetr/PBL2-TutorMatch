@@ -75,6 +75,7 @@ users_test_sandbox.dat
 *.tmp
 *.log
 *.bak
+*.bak_*
 
 # 7. Scratch Directories
 /scratch/

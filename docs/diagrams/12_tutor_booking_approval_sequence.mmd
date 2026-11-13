@@ -1,0 +1,57 @@
+sequenceDiagram
+    %% =========================================================================
+    %% DIAGRAM 12: TUTOR BOOKING APPROVAL & COMMITMENT SEQUENCE
+    %% =========================================================================
+    autonumber
+    actor Tutor as Gia sư (QML UI)
+    participant View as TutorBookings.qml
+    participant Bridge as GUIBridge (Presentation)
+    participant BookSvc as BookingService (Business)
+    participant UserRepo as IUserRepository (DAL)
+    participant CbRepo as ICourseBookingRepository (DAL)
+    participant Disk as Physical Storage (.dat)
+
+    Tutor->>View: Mở tab "Yêu Cầu Đăng Ký Mới"
+    View->>Bridge: qmlGetTutorBookings()
+    Bridge->>BookSvc: getTutorCourseBookings(tutorId)
+    BookSvc-->>Bridge: Danh sách khóa học có status == "PENDING"
+    Bridge-->>View: Hiển thị thẻ yêu cầu kèm nút "Chấp nhận" & "Từ chối"
+
+    alt Trường hợp 1: Chấp nhận khóa học (Accept Flow)
+        Tutor->>View: Nhấn "Chấp nhận" (Kèm đồng ý Cam kết V1)
+        View->>Bridge: qmlAcceptBooking(bookingId, acknowledgeCommitment=true)
+        Bridge->>BookSvc: acceptCourseBooking(tutorId, bookingId, outMsg, true)
+        BookSvc->>BookSvc: lock_guard<recursive_mutex> lock(serviceMutex)
+
+        BookSvc->>CbRepo: findCourseBookingById(bookingId)
+        CbRepo-->>BookSvc: bookingPtr
+
+        BookSvc->>BookSvc: Kiểm tra bookingPtr->status == "PENDING"
+        BookSvc->>BookSvc: Kiểm tra bookingPtr->studentAcknowledged == true
+        BookSvc->>BookSvc: Kiểm tra không xung đột với khóa ACCEPTED khác
+
+        Note over BookSvc: Cập nhật Cam kết & Trạng thái
+        BookSvc->>BookSvc: bookingPtr->tutorAcknowledged = true
+        BookSvc->>BookSvc: bookingPtr->tutorAckTimestamp = now
+        BookSvc->>BookSvc: bookingPtr->status = "ACCEPTED"
+
+        BookSvc->>CbRepo: updateCourseBooking(*bookingPtr)
+        CbRepo->>Disk: Cập nhật trạng thái trong course_bookings.dat
+
+        Note over BookSvc: Khóa học chuyển ACCEPTED (chưa tính thu nhập)<br/>Thu nhập chỉ được ghi nhận khi khóa học đạt COMPLETED
+
+        BookSvc-->>Bridge: return true ("Chấp nhận khóa học thành công!")
+        Bridge->>View: Q_EMIT dataChanged()
+        View-->>Tutor: Thẻ chuyển sang trạng thái "ĐÃ CHẤP NHẬN" & hiện trên thời khóa biểu
+
+    else Trường hợp 2: Từ chối khóa học (Reject Flow)
+        Tutor->>View: Nhấn "Từ chối"
+        View->>Bridge: qmlRejectBooking(bookingId)
+        Bridge->>BookSvc: rejectCourseBooking(tutorId, bookingId, outMsg)
+        BookSvc->>BookSvc: bookingPtr->status = "REJECTED"
+        BookSvc->>CbRepo: updateCourseBooking(*bookingPtr)
+        CbRepo->>Disk: Cập nhật REJECTED vào course_bookings.dat
+        BookSvc-->>Bridge: return true
+        Bridge->>View: Q_EMIT dataChanged()
+        View-->>Tutor: Yêu cầu bị loại bỏ khỏi danh sách chờ
+    end

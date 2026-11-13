@@ -1,0 +1,77 @@
+classDiagram
+    %% =========================================================================
+    %% DIAGRAM 08: COURSEBOOKING & REVIEW DOMAIN ENTITIES
+    %% =========================================================================
+
+    class CourseBooking {
+        +int id
+        +int studentId
+        +int tutorId
+        +string studentName
+        +string tutorName
+        +string subject
+        +double hourlyRate
+        +string startDate
+        +int weeksCount
+        +string status
+        +string createdAt
+        +string weeklySchedule
+        +int earlyTerminationRequesterId
+        +string earlyTerminationStatus
+        +string earlyTerminationReason
+        +string actualEndDate
+        +bool studentAcknowledged
+        +string studentAckTimestamp
+        +bool tutorAcknowledged
+        +string tutorAckTimestamp
+        +string commitmentVersion
+        +isCommitmentFullyAcknowledged() bool
+        +getWeeklySlots() vector~pair~int,int~~
+    }
+
+    class Review {
+        +int id
+        +int bookingId
+        +int studentId
+        +int tutorId
+        +string studentName
+        +int ratingScore
+        +string comment
+        +string createdAt
+    }
+
+    class TimetableSessionDTO {
+        +int bookingId
+        +int courseBookingId
+        +int studentId
+        +int tutorId
+        +string studentName
+        +string tutorName
+        +string subject
+        +int dayOfWeek
+        +int slotIndex
+        +string dateStr
+        +string status
+        +bool isRecurringCourse
+    }
+
+    class SmartMatchCriteria {
+        +string subject
+        +int grade
+        +double maxBudget
+        +uint64_t preferredScheduleMask
+        +int minRating
+        +int minReviews
+    }
+
+    class TutorMatchResult {
+        +Tutor tutor
+        +double matchScore
+        +int commonSlotsCount
+        +double compatibilityPercentage
+        +string matchRationale
+    }
+
+    CourseBooking "1" -- "0..1" Review : receives
+    CourseBooking ..> TimetableSessionDTO : generates
+    SmartMatchCriteria ..> TutorMatchResult : evaluates

@@ -1,0 +1,62 @@
+erDiagram
+    %% =========================================================================
+    %% DIAGRAM 17: LOGICAL ENTITY RELATIONSHIP DIAGRAM (ERD)
+    %% =========================================================================
+    title LOGICAL ENTITY RELATIONSHIP DIAGRAM (ATTRIBUTES & CONSTRAINTS)
+
+    Users {
+        int id PK "Mã ID duy nhất (Tự tăng)"
+        string username UK "Tên đăng nhập (Duy nhất)"
+        string passwordHash "Mật khẩu băm SHA-256 (64 ký tự hex)"
+        string email "Email liên hệ"
+        string fullName "Họ tên hiển thị"
+        string role "STUDENT | TUTOR | ADMIN"
+        int isActive "1: Hoạt động, 0: Bị khóa"
+        int gradeLevel "1-12 (Dành cho Student)"
+        uint64 scheduleBitmask "56-slot bitmask [0..0x00FFFFFFFFFFFFFF]"
+        string bio "Tiểu sử giới thiệu (Tutor)"
+        string subjectSpecialty "Môn chuyên môn (Tutor)"
+        double hourlyRate "Học phí VNĐ/buổi (Tutor >= 0)"
+        double rating "Điểm sao trung bình [0.0..5.0] (Tutor)"
+        int totalReviews "Số lượng đánh giá (Tutor >= 0)"
+        double totalEarnings "Tổng thu nhập VNĐ (Tutor >= 0)"
+    }
+
+    CourseBookings {
+        int id PK "Mã ID khóa học định kỳ (Tự tăng)"
+        int studentId FK "Tham chiếu Users.id (Role STUDENT)"
+        int tutorId FK "Tham chiếu Users.id (Role TUTOR)"
+        string studentName "Tên học viên (Denormalized)"
+        string tutorName "Tên gia sư (Denormalized)"
+        string subject "Tên môn học"
+        double hourlyRate "Học phí tại thời điểm đặt"
+        string startDate "Ngày bắt đầu YYYY-MM-DD"
+        int weeksCount "Thời lượng tuần (4, 8, 12)"
+        string status "PENDING | ACCEPTED | REJECTED | COMPLETED | CANCELLED | EARLY_TERMINATED"
+        string createdAt "Ngày tạo YYYY-MM-DD"
+        string weeklySchedule "Lịch định kỳ: 'dow:slot;...' (Nguồn chân lý duy nhất)"
+        int earlyTerminationRequesterId "ID người đề nghị kết thúc sớm (0 nếu không)"
+        string earlyTerminationStatus "NONE | PENDING | ACCEPTED | REJECTED"
+        string earlyTerminationReason "Lý do kết thúc sớm"
+        string actualEndDate "Ngày kết thúc sớm thực tế"
+        int studentAcknowledged "1 nếu học viên đồng ý Cam kết V1"
+        string studentAckTimestamp "Dấu thời gian ISO học viên cam kết"
+        int tutorAcknowledged "1 nếu gia sư đồng ý Cam kết V1"
+        string tutorAckTimestamp "Dấu thời gian ISO gia sư cam kết"
+        string commitmentVersion "Phiên bản cam kết: 'COMMITMENT_V1'"
+    }
+
+    Reviews {
+        int id PK "Mã ID đánh giá (Tự tăng)"
+        int bookingId FK "Tham chiếu CourseBookings.id (Unique per booking)"
+        int studentId FK "Tham chiếu Users.id (Học viên gửi)"
+        int tutorId FK "Tham chiếu Users.id (Gia sư nhận)"
+        string studentName "Tên học viên (Denormalized)"
+        int ratingScore "Điểm sao [1..5]"
+        string comment "Nội dung nhận xét (Không rỗng)"
+        string createdAt "Ngày đánh giá YYYY-MM-DD"
+    }
+
+    Users ||--o{ CourseBookings : "Student đặt / Tutor dạy"
+    CourseBookings ||--o| Reviews : "1 đơn COMPLETED/EARLY sinh tối đa 1 review"
+    Users ||--o{ Reviews : "Student viết / Tutor nhận"

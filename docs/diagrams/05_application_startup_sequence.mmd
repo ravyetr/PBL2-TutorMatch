@@ -1,0 +1,58 @@
+sequenceDiagram
+    %% =========================================================================
+    %% DIAGRAM 05: APPLICATION STARTUP & INITIALIZATION SEQUENCE
+    %% =========================================================================
+    autonumber
+    actor User as Người dùng
+    participant OS as Hệ Điều Hành (Windows)
+    participant Main as gui_main.cpp (Entry Point)
+    participant Paths as ApplicationPaths
+    participant MockDB as MockDatabaseEngine
+    participant Repos as File Repositories
+    participant Services as Application Services
+    participant RevSvc as ReviewService
+    participant Bridge as GUIBridge
+    participant QMLEngine as QQmlApplicationEngine
+    participant QMLView as main.qml (UI Window)
+
+    User->>OS: Khởi chạy TutorMatch_GUI.exe
+    OS->>Main: main(argc, argv)
+
+    alt Có tham số chẩn đoán (--inspect / --inspect-data)
+        Main->>Main: DataFileInspector::inspectAll()
+        Main-->>OS: exit(0)
+    end
+
+    Main->>Main: QGuiApplication app(argc, argv)
+    Main->>Paths: resolveDataDirectory()
+    Paths-->>Main: "C:/Users/.../data" (Đường dẫn chuẩn xác)
+
+    Note over Main,MockDB: 1. Khởi tạo Tầng Lưu Trữ (DAL)
+    Main->>MockDB: std::make_shared<MockDatabaseEngine>(dataDir)
+    Main->>MockDB: dbEngine->initialize()
+    MockDB->>MockDB: seedDefaultDataIfEmpty()
+    Note over MockDB: Nếu thư mục data trống: tự động copy từ data/seed/
+    MockDB->>Repos: getUserRepository(), getReviewRepository(), getCourseBookingRepository()
+
+    Note over Main,Services: 2. Khởi tạo Tầng Nghiệp Vụ (BLL)
+    Main->>Services: make_shared<AuthService>(userRepo)
+    Main->>Services: make_shared<UserService>(userRepo)
+    Main->>Services: make_shared<BookingService>(userRepo, reviewRepo, courseBookingRepo)
+    Main->>Services: make_shared<ReviewService>(reviewRepo, userRepo, courseBookingRepo)
+    Main->>Services: make_shared<MatchingService>(userRepo)
+    Main->>Services: make_shared<AdminService>(userRepo, reviewRepo, bookingService)
+
+    Note over Main,RevSvc: 3. Tự Phục Hồi Dữ Liệu (ADR-007 Self-Healing)
+    Main->>RevSvc: reconcileRatingsOnStartup()
+    Note over RevSvc: Quét toàn bộ reviews.dat và đồng bộ lại rating chuẩn trong users.dat
+
+    Note over Main,Bridge: 4. Khởi tạo Bộ Điều Hợp Trình Diễn (PL)
+    Main->>Bridge: std::make_shared<GUIBridge>()
+    Main->>Bridge: bridge->initialize(authSvc, userSvc, bookingSvc, revSvc, matchSvc, adminSvc)
+
+    Note over Main,QMLEngine: 5. Nạp Giao Diện Đồ Họa Qt Quick
+    Main->>QMLEngine: engine.rootContext()->setContextProperty("guiBridge", bridge.get())
+    Main->>QMLEngine: engine.load("qrc:/TutorMatch/ui/qml/main.qml")
+    QMLEngine->>QMLView: Render cửa sổ chính & hiển thị LoginView
+    QMLView-->>User: Giao diện sẵn sàng tương tác
+    Main->>OS: app.exec() (Vòng lặp sự kiện chính)

@@ -1,0 +1,84 @@
+classDiagram
+    %% =========================================================================
+    %% DIAGRAM 07: USER CLASS HIERARCHY AND POLYMORPHISM
+    %% =========================================================================
+
+    class UserRole {
+        <<enumeration>>
+        STUDENT
+        TUTOR
+        ADMIN
+    }
+
+    class User {
+        <<abstract>>
+        #int id
+        #string username
+        #string passwordHash
+        #string email
+        #string fullName
+        #UserRole role
+        #bool isActive
+        +getId() int
+        +getUsername() string
+        +getPasswordHash() string
+        +getEmail() string
+        +getFullName() string
+        +getRole() UserRole
+        +getIsActive() bool
+        +setId(int) void
+        +setPasswordHash(string) void
+        +setEmail(string) void
+        +setFullName(string) void
+        +setIsActive(bool) void
+        +getRoleString()* string
+        +displayProfile()* void
+    }
+
+    class Student {
+        -int gradeLevel
+        -uint64_t scheduleBitmask
+        +getGradeLevel() int
+        +setGradeLevel(int) void
+        +getScheduleBitmask() uint64_t
+        +setScheduleBitmask(uint64_t) void
+        +getRoleString() string
+        +displayProfile() void
+    }
+
+    class Tutor {
+        -string bio
+        -string subjectSpecialty
+        -double hourlyRate
+        -double rating
+        -int totalReviews
+        -double totalEarnings
+        -uint64_t scheduleBitmask
+        +getBio() string
+        +getSubjectSpecialty() string
+        +getHourlyRate() double
+        +getRating() double
+        +getTotalReviews() int
+        +getTotalEarnings() double
+        +getScheduleBitmask() uint64_t
+        +setBio(string) void
+        +setSubjectSpecialty(string) void
+        +setHourlyRate(double) void
+        +setRating(double) void
+        +setTotalReviews(int) void
+        +addEarnings(double) void
+        +setScheduleBitmask(uint64_t) void
+        +addReviewRating(int) void
+        +getRoleString() string
+        +displayProfile() void
+    }
+
+    class Admin {
+        +getRoleString() string
+        +displayProfile() void
+    }
+
+    User <|-- Student : extends
+    User <|-- Tutor : extends
+    User <|-- Admin : extends
+    User --> UserRole : uses

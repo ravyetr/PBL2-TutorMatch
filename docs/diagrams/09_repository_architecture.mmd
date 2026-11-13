@@ -1,0 +1,99 @@
+classDiagram
+    %% =========================================================================
+    %% DIAGRAM 09: REPOSITORY ARCHITECTURE & SERIALIZATION
+    %% =========================================================================
+
+    class IUserRepository {
+        <<interface>>
+        +findUserById(int id)* shared_ptr~User~
+        +findUserByUsername(string uName)* shared_ptr~User~
+        +findTutorsBySubject(string subj)* vector~shared_ptr~Tutor~~
+        +findTutorIdsByPriceRange(double minP, double maxP)* vector~int~
+        +getAllUsers()* vector~shared_ptr~User~~
+        +getAllTutors()* vector~shared_ptr~Tutor~~
+        +getAllStudents()* vector~shared_ptr~Student~~
+        +saveUser(User& user)* bool
+        +updateUser(User& user)* bool
+        +deleteUser(int id)* bool
+        +getNextUserId()* int
+    }
+
+    class ICourseBookingRepository {
+        <<interface>>
+        +findCourseBookingById(int id)* shared_ptr~CourseBooking~
+        +getCourseBookingsByStudentId(int sId)* vector~CourseBooking~
+        +getCourseBookingsByTutorId(int tId)* vector~CourseBooking~
+        +getAllCourseBookings()* vector~CourseBooking~
+        +saveCourseBooking(CourseBooking& b)* bool
+        +updateCourseBooking(CourseBooking& b)* bool
+        +deleteCourseBooking(int id)* bool
+        +getNextCourseBookingId()* int
+    }
+
+    class IReviewRepository {
+        <<interface>>
+        +findReviewById(int id)* shared_ptr~Review~
+        +getReviewsByTutorId(int tId)* vector~Review~
+        +getReviewsByStudentId(int sId)* vector~Review~
+        +getAllReviews()* vector~Review~
+        +saveReview(Review& r)* bool
+        +deleteReview(int id)* bool
+        +getNextReviewId()* int
+    }
+
+    class FileUserRepository {
+        -string filePath
+        -AVLTree~double, int~ tutorPriceTree
+        -bool dirty
+        -loadFromFile() void
+        -persistToFile() bool
+    }
+
+    class FileCourseBookingRepository {
+        -string filePath
+        -vector~CourseBooking~ cache
+        -loadFromFile() void
+        -persistToFile() bool
+    }
+
+    class FileReviewRepository {
+        -string filePath
+        -vector~Review~ cache
+        -loadFromFile() void
+        -persistToFile() bool
+    }
+
+    class UserSerializer {
+        <<utility>>
+        +toCsv(User&) string
+        +fromCsv(string, string*) shared_ptr~User~
+    }
+
+    class CourseBookingSerializer {
+        <<utility>>
+        +toCsv(CourseBooking&) string
+        +fromCsv(string, string*) optional~CourseBooking~
+    }
+
+    class ReviewSerializer {
+        <<utility>>
+        +toCsv(Review&) string
+        +fromCsv(string, string*) optional~Review~
+    }
+
+    class ApplicationPaths {
+        <<utility>>
+        +resolveDataDirectory() string
+    }
+
+    IUserRepository <|.. FileUserRepository : implements
+    ICourseBookingRepository <|.. FileCourseBookingRepository : implements
+    IReviewRepository <|.. FileReviewRepository : implements
+
+    FileUserRepository ..> UserSerializer : uses
+    FileCourseBookingRepository ..> CourseBookingSerializer : uses
+    FileReviewRepository ..> ReviewSerializer : uses
+
+    FileUserRepository ..> ApplicationPaths : resolves path
+    FileCourseBookingRepository ..> ApplicationPaths : resolves path
+    FileReviewRepository ..> ApplicationPaths : resolves path

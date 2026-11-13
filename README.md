@@ -5,7 +5,7 @@
 [![Framework](https://img.shields.io/badge/Framework-Qt%206.11-green.svg)](https://www.qt.io/)
 [![UI](https://img.shields.io/badge/UI-QML%20%2F%20QtQuick-lightgrey.svg)](https://doc.qt.io/qt-6/qtquick-index.html)
 [![Storage](https://img.shields.io/badge/Storage-Flat--File%20%28CSV%20%2B%20AVL%29-orange.svg)](#5-storage--database-architecture)
-[![Tests](https://img.shields.io/badge/Tests-29%20Suites%20Passing-brightgreen.svg)](#8-running-tests--forensic-inspector)
+[![Tests](https://img.shields.io/badge/Tests-34%20Suites%20Passing-brightgreen.svg)](#8-running-tests--forensic-inspector)
 
 ---
 
@@ -19,6 +19,19 @@ The project models an academic matchmaking and recurring schedule negotiation sy
 > **Matching & Scheduling Platform, NOT an LMS:**  
 > TutorMatch is designed specifically for **Tutor–Student Matching, Timetable Negotiation, and Mutual Commitments**.  
 > The application deliberately does not track attendance, grade student assignments, process online payments, or collect platform fees. It manages schedule agreements and mutual commitments between students and tutors.
+
+### Comprehensive Technical Documentation
+A definitive, fully verified technical documentation rebuild is available in the [`docs/`](docs/README.md) directory:
+- [**Documentation Portal & Reading Guide (docs/README.md)**](docs/README.md)
+- [01. Introduction & Overview](docs/01_introduction/01_product_overview_VI.md)
+- [02. Three-Layer Architecture](docs/02_system_architecture/01_overall_architecture_VI.md)
+- [03. Functional Specifications (STU / TUT / ADM)](docs/03_functional_specification/01_student_features_VI.md)
+- [04. Data Model & Data Dictionary](docs/04_data_and_database/02_data_dictionary_VI.md)
+- [05. Business Logic & SmartMatch Engine](docs/05_business_logic/03_smartmatch_engine_algorithm_VI.md)
+- [06. Comprehensive SOLID Principles Audit](docs/06_solid_analysis/06_class_level_solid_matrix_VI.md)
+- [07. Complete Code Reference & Symbol Index](docs/07_code_reference/01_complete_repository_inventory_VI.md)
+- [08. Quality, Testing & Technical Debt](docs/08_quality_and_testing/01_test_architecture_and_infrastructure_VI.md)
+- [Architectural Diagrams (20 Mermaid Diagrams)](docs/diagrams/)
 
 ---
 
@@ -145,14 +158,11 @@ cmake --build --preset default -j4
 # 1. Configure build directory
 cmake -B build -S . -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Debug
 
-# 2. Build all 4 targets
+# 2. Build all 3 targets
 cmake --build build --config Debug -j4
 
 # 3. Launch GUI
 .\build\TutorMatch_GUI.exe
-
-# 4. Or launch Interactive Console CLI
-.\build\TutorMatch_CLI.exe
 ```
 
 ---
@@ -160,7 +170,7 @@ cmake --build build --config Debug -j4
 ## 8. Running Tests & Forensic Inspector
 
 ### Automated Verification Test Suite (`TutorMatch_Tests`)
-TutorMatch features an exhaustive, zero-dependency C++ verification runner with **29 comprehensive test suites** covering:
+TutorMatch features an exhaustive, zero-dependency C++ verification runner with **34 comprehensive test suites** covering:
 - Open/Closed & Liskov Substitution Principles (OCP / LSP)
 - Dependency Inversion & Single Responsibility (DIP / ISP / SRP)
 - 56-slot bitmask math, phantom bit protection, and collision detection
@@ -168,6 +178,11 @@ TutorMatch features an exhaustive, zero-dependency C++ verification runner with 
 - Atomic persistence, self-healing rating reconciliation, and multi-slot course workflows
 - SmartMatch mandatory subject filtering and semantic search engine ranking
 - Complete tutor verification decommission invariants
+- Generic Data Structures & Algorithmic Invariants (HashTable, AVLTree, LRUCache, ScheduleGuard, MaxHeap, DoublyLinkedList)
+- Unified Root Admin authorization & permission level removal
+- Tutor accumulated income single source of truth & startup reconciliation
+- Course registration start-date chronological calculation & order invariance
+- Consensual early termination workflows & completion guard protection
 
 ```powershell
 .\build\TutorMatch_Tests.exe
@@ -213,25 +228,24 @@ PBL2-TutorMatch/
 │       ├── course_bookings.dat # 23 seed course booking records
 │       └── reviews.dat         # 15 seed course review records
 ├── docs/                       # Architecture Decision Records (ADRs) & reports
-├── include/                    # C++ Header Files
-│   ├── algorithms/             # MatchingEngine, TutorSearchMatcher, IMatchingStrategy
-│   ├── ds/                     # AVLTree, ScheduleGuard, HashTable, MaxHeap, LRUCache
-│   ├── gui/                    # GUIBridge QObject controller
-│   ├── models/                 # User, Student, Tutor, Admin, CourseBooking, Review
-│   ├── services/               # AuthService, BookingService, MatchingService, AdminService
-│   ├── storage/                # MockDatabaseEngine, Repositories, Serializers, Inspector
-│   └── utils/                  # DateUtils
+├── include/                    # C++ Header Files (Strict Three-Layer Architecture)
+│   ├── presentation/           # 1. Presentation Layer
+│   │   └── bridges/            # GUIBridge QObject controller
+│   ├── business/               # 2. Business Logic Layer
+│   │   ├── domain/             # User, CourseBooking, BookingDTOs, Review, DateUtils
+│   │   ├── services/           # AuthService, BookingService, UserService, ReviewService, MatchingService, AdminService
+│   │   ├── matching/           # MatchingEngine, IMatchingStrategy, SubjectTaxonomy, TutorSearchMatcher
+│   │   └── algorithms/         # ScheduleGuard, AVLTree, HashTable, LRUCache, MaxHeap, DoublyLinkedList
+│   └── data_access/            # 3. Data Access Layer
+│       ├── repositories/       # IRepository, FileUserRepository, FileCourseBookingRepository, FileReviewRepository
+│       ├── serializers/        # SerializerUtils, UserSerializer, CourseBookingSerializer, ReviewSerializer
+│       └── storage/            # MockDatabaseEngine, ApplicationPaths, DataFileInspector
 ├── src/                        # C++ Implementation Files
-│   ├── algorithms/
-│   ├── ds/
-│   ├── gui/                    # GUIBridge and main Qt application entry point
-│   ├── models/
-│   ├── services/
-│   ├── storage/
-│   ├── tools/                  # TutorMatch_Inspector CLI entry point
-│   ├── ui/                     # TutorMatch_CLI console app implementation
-│   └── utils/
-├── tests/                      # TestRunner.cpp (29 verification test suites)
+│   ├── presentation/           # gui_main.cpp, bridges/GUIBridge.cpp
+│   ├── business/               # domain/, services/, matching/, algorithms/
+│   ├── data_access/            # repositories/, serializers/, storage/
+│   └── tools/                  # inspect_main.cpp (TutorMatch_Inspector CLI entry point)
+├── tests/                      # TestRunner.cpp (34 verification test suites)
 └── ui/
     └── qml/                    # Qt Quick / QML components, views, dialogs, and Theme
 ```
@@ -250,7 +264,7 @@ PBL2-TutorMatch/
 <details>
 <summary><b>2. Application launches with black screen or QML module errors</b></summary>
 
-- TutorMatch utilizes `qt_add_qml_module` with the URI `TutorMatch` and requires `QT_QUICK_CONTROLS_STYLE=Basic`, which is automatically set in `src/gui/main.cpp`.
+- TutorMatch utilizes `qt_add_qml_module` with the URI `TutorMatch` and requires `QT_QUICK_CONTROLS_STYLE=Basic`, which is automatically set in `src/presentation/gui_main.cpp`.
 - If running from outside Qt Creator, ensure Qt's `bin/` directory and QML plugin directory are accessible, or run the application from within Qt Creator.
 </details>
 

@@ -1,0 +1,97 @@
+classDiagram
+    %% =========================================================================
+    %% DIAGRAM 18: PHYSICAL STORAGE CSV RECORD LAYOUT & DATA FILES
+    %% =========================================================================
+
+    class Users_Dat_File ["📄 data/users.dat (Polymorphic CSV)"] {
+        Delimiter: Comma (,)
+        Escape: Quotes if contains comma/quote
+        Encoding: UTF-8
+
+        === STUDENT RECORD (9 Fields) ===
+        1: id [int]
+        2: username [string]
+        3: passwordHash [sha256 hex]
+        4: email [string]
+        5: fullName [string]
+        6: role ["STUDENT"]
+        7: isActive [1/0]
+        8: gradeLevel [1-12]
+        9: scheduleBitmask [uint64]
+
+        === TUTOR RECORD (14 Fields) ===
+        1: id [int]
+        2: username [string]
+        3: passwordHash [sha256 hex]
+        4: email [string]
+        5: fullName [string]
+        6: role ["TUTOR"]
+        7: isActive [1/0]
+        8: bio [string]
+        9: subjectSpecialty [string]
+        10: hourlyRate [double]
+        11: rating [double]
+        12: totalReviews [int]
+        13: totalEarnings [double]
+        14: scheduleBitmask [uint64]
+
+        === ADMIN RECORD (7 Fields) ===
+        1: id [int]
+        2: username [string]
+        3: passwordHash [sha256 hex]
+        4: email [string]
+        5: fullName [string]
+        6: role ["ADMIN"]
+        7: isActive [1/0]
+    }
+
+    class CourseBookings_Dat_File ["📄 data/course_bookings.dat (CSV)"] {
+        Delimiter: Comma (,)
+        Escape: Quotes if contains comma/quote
+        Encoding: UTF-8
+
+        === BASE RECORD (12 Fields) ===
+        1: id [int]
+        2: studentId [int -> users.dat]
+        3: tutorId [int -> users.dat]
+        4: studentName [string]
+        5: tutorName [string]
+        6: subject [string]
+        7: hourlyRate [double]
+        8: startDate [YYYY-MM-DD]
+        9: weeksCount [4,8,12]
+        10: status [PENDING/ACCEPTED/REJECTED/COMPLETED/CANCELLED/EARLY_TERMINATED]
+        11: createdAt [YYYY-MM-DD]
+        12: weeklySchedule ["dow:slot;..."]
+
+        === EXTENDED COMMITMENT & TERMINATION (Fields 13-21) ===
+        13: earlyTerminationRequesterId [int]
+        14: earlyTerminationStatus [NONE/PENDING/ACCEPTED/REJECTED]
+        15: earlyTerminationReason [string]
+        16: actualEndDate [YYYY-MM-DD]
+        17: studentAcknowledged [1/0]
+        18: studentAckTimestamp [ISO timestamp]
+        19: tutorAcknowledged [1/0]
+        20: tutorAckTimestamp [ISO timestamp]
+        21: commitmentVersion ["COMMITMENT_V1"]
+    }
+
+    class Reviews_Dat_File ["📄 data/reviews.dat (CSV)"] {
+        Delimiter: Comma (,)
+        Escape: Quotes if contains comma/quote
+        Encoding: UTF-8
+
+        === STANDARD RECORD (8 Fields) ===
+        1: id [int]
+        2: bookingId [int -> course_bookings.dat]
+        3: studentId [int -> users.dat]
+        4: tutorId [int -> users.dat]
+        5: studentName [string]
+        6: ratingScore [int 1-5]
+        7: comment [string]
+        8: createdAt [YYYY-MM-DD]
+    }
+
+    Users_Dat_File <.. CourseBookings_Dat_File : studentId, tutorId
+    CourseBookings_Dat_File <.. Reviews_Dat_File : bookingId
+    Users_Dat_File <.. Reviews_Dat_File : studentId, tutorId

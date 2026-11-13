@@ -17,74 +17,106 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Các file mã nguồn C++ Backend
+# ============================================================================
+# C++ Mã nguồn Backend — Kiến trúc 3 lớp (Strict Three-Layer Architecture)
+# ============================================================================
 set(CORE_SOURCES
-    src/models/User.cpp
-    src/models/SubjectTaxonomy.cpp
-    src/ds/ScheduleGuard.cpp
-    src/utils/DateUtils.cpp
-    src/storage/ApplicationPaths.cpp
-    src/storage/MockDatabaseEngine.cpp
-    src/storage/DataFileInspector.cpp
-    src/storage/serializers/SerializerUtils.cpp
-    src/storage/serializers/UserSerializer.cpp
-    src/storage/serializers/CourseBookingSerializer.cpp
-    src/storage/serializers/ReviewSerializer.cpp
-    src/storage/repositories/FileUserRepository.cpp
-    src/storage/repositories/FileCourseBookingRepository.cpp
-    src/storage/repositories/FileReviewRepository.cpp
-    src/algorithms/MatchingEngine.cpp
-    src/algorithms/TutorSearchMatcher.cpp
-    src/services/AuthService.cpp
-    src/services/UserService.cpp
-    src/services/BookingService.cpp
-    src/services/ReviewService.cpp
-    src/services/MatchingService.cpp
-    src/services/AdminService.cpp
-    src/gui/GUIBridge.cpp
+    # 1. Business Logic Layer — Domain
+    src/business/domain/User.cpp
+    src/business/domain/DateUtils.cpp
+
+    # 1. Business Logic Layer — Matching
+    src/business/matching/SubjectTaxonomy.cpp
+    src/business/matching/MatchingEngine.cpp
+    src/business/matching/TutorSearchMatcher.cpp
+
+    # 1. Business Logic Layer — Algorithms
+    src/business/algorithms/ScheduleGuard.cpp
+
+    # 1. Business Logic Layer — Services
+    src/business/services/AuthService.cpp
+    src/business/services/UserService.cpp
+    src/business/services/BookingService.cpp
+    src/business/services/ReviewService.cpp
+    src/business/services/MatchingService.cpp
+    src/business/services/AdminService.cpp
+
+    # 2. Data Access Layer — Storage & Path Management
+    src/data_access/storage/ApplicationPaths.cpp
+    src/data_access/storage/MockDatabaseEngine.cpp
+    src/data_access/storage/DataFileInspector.cpp
+
+    # 2. Data Access Layer — Serializers
+    src/data_access/serializers/SerializerUtils.cpp
+    src/data_access/serializers/UserSerializer.cpp
+    src/data_access/serializers/CourseBookingSerializer.cpp
+    src/data_access/serializers/ReviewSerializer.cpp
+
+    # 2. Data Access Layer — Repositories
+    src/data_access/repositories/FileUserRepository.cpp
+    src/data_access/repositories/FileCourseBookingRepository.cpp
+    src/data_access/repositories/FileReviewRepository.cpp
+
+    # 3. Presentation Layer — Bridges
+    src/presentation/bridges/GUIBridge.cpp
 )
 
-# File main C++ cho ứng dụng Qt
+# File main C++ cho ứng dụng Qt Quick GUI
 set(GUI_SOURCES
     ${CORE_SOURCES}
-    src/gui/main.cpp
+    src/presentation/gui_main.cpp
 )
 
-# File Header
+# Danh sách Header Files — Kiến trúc 3 lớp
 set(HEADERS
-    include/ds/HashTable.h
-    include/ds/DoublyLinkedList.h
-    include/ds/LRUCache.h
-    include/ds/AVLTree.h
-    include/ds/MaxHeap.h
-    include/ds/ScheduleGuard.h
-    include/models/User.h
-    include/models/SubjectTaxonomy.h
-    include/models/CourseBooking.h
-    include/models/BookingDTOs.h
-    include/models/Review.h
-    include/utils/DateUtils.h
-    include/storage/IRepository.h
-    include/storage/ApplicationPaths.h
-    include/storage/MockDatabaseEngine.h
-    include/storage/DataFileInspector.h
-    include/storage/serializers/SerializerUtils.h
-    include/storage/serializers/UserSerializer.h
-    include/storage/serializers/CourseBookingSerializer.h
-    include/storage/serializers/ReviewSerializer.h
-    include/storage/repositories/FileUserRepository.h
-    include/storage/repositories/FileCourseBookingRepository.h
-    include/storage/repositories/FileReviewRepository.h
-    include/algorithms/IMatchingStrategy.h
-    include/algorithms/MatchingEngine.h
-    include/algorithms/TutorSearchMatcher.h
-    include/services/AuthService.h
-    include/services/UserService.h
-    include/services/BookingService.h
-    include/services/ReviewService.h
-    include/services/MatchingService.h
-    include/services/AdminService.h
-    include/gui/GUIBridge.h
+    # Presentation Layer
+    include/presentation/bridges/GUIBridge.h
+
+    # Business Logic Layer — Domain
+    include/business/domain/User.h
+    include/business/domain/CourseBooking.h
+    include/business/domain/BookingDTOs.h
+    include/business/domain/Review.h
+    include/business/domain/DateUtils.h
+
+    # Business Logic Layer — Services
+    include/business/services/AuthService.h
+    include/business/services/UserService.h
+    include/business/services/BookingService.h
+    include/business/services/ReviewService.h
+    include/business/services/MatchingService.h
+    include/business/services/AdminService.h
+
+    # Business Logic Layer — Matching
+    include/business/matching/IMatchingStrategy.h
+    include/business/matching/MatchingEngine.h
+    include/business/matching/SubjectTaxonomy.h
+    include/business/matching/TutorSearchMatcher.h
+
+    # Business Logic Layer — Algorithms & Generic Data Structures
+    include/business/algorithms/ScheduleGuard.h
+    include/business/algorithms/HashTable.h
+    include/business/algorithms/DoublyLinkedList.h
+    include/business/algorithms/LRUCache.h
+    include/business/algorithms/AVLTree.h
+    include/business/algorithms/MaxHeap.h
+
+    # Data Access Layer — Repositories
+    include/data_access/repositories/IRepository.h
+    include/data_access/repositories/FileUserRepository.h
+    include/data_access/repositories/FileCourseBookingRepository.h
+    include/data_access/repositories/FileReviewRepository.h
+
+    # Data Access Layer — Serializers
+    include/data_access/serializers/SerializerUtils.h
+    include/data_access/serializers/UserSerializer.h
+    include/data_access/serializers/CourseBookingSerializer.h
+    include/data_access/serializers/ReviewSerializer.h
+
+    # Data Access Layer — Storage
+    include/data_access/storage/ApplicationPaths.h
+    include/data_access/storage/MockDatabaseEngine.h
+    include/data_access/storage/DataFileInspector.h
 )
 
 # Tệp giao diện QML
@@ -173,30 +205,8 @@ endif()
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/TestRunner.cpp")
     add_executable(TutorMatch_Tests
         tests/TestRunner.cpp
-        src/models/User.cpp
-        src/models/SubjectTaxonomy.cpp
-        src/ds/ScheduleGuard.cpp
-        src/utils/DateUtils.cpp
-        src/storage/ApplicationPaths.cpp
-        src/storage/MockDatabaseEngine.cpp
-        src/storage/DataFileInspector.cpp
-        src/storage/serializers/SerializerUtils.cpp
-        src/storage/serializers/UserSerializer.cpp
-        src/storage/serializers/CourseBookingSerializer.cpp
-        src/storage/serializers/ReviewSerializer.cpp
-        src/storage/repositories/FileUserRepository.cpp
-        src/storage/repositories/FileCourseBookingRepository.cpp
-        src/storage/repositories/FileReviewRepository.cpp
-        src/algorithms/MatchingEngine.cpp
-        src/algorithms/TutorSearchMatcher.cpp
-        src/services/AuthService.cpp
-        src/services/UserService.cpp
-        src/services/BookingService.cpp
-        src/services/ReviewService.cpp
-        src/services/MatchingService.cpp
-        src/services/AdminService.cpp
-        include/gui/GUIBridge.h
-        src/gui/GUIBridge.cpp
+        ${CORE_SOURCES}
+        include/presentation/bridges/GUIBridge.h
     )
 
     target_compile_definitions(TutorMatch_Tests PRIVATE
@@ -213,9 +223,9 @@ endif()
 # ============================================================================
 add_executable(TutorMatch_Inspector
     src/tools/inspect_main.cpp
-    src/storage/DataFileInspector.cpp
-    src/storage/ApplicationPaths.cpp
-    src/ds/ScheduleGuard.cpp
+    src/data_access/storage/DataFileInspector.cpp
+    src/data_access/storage/ApplicationPaths.cpp
+    src/business/algorithms/ScheduleGuard.cpp
 )
 
 target_compile_definitions(TutorMatch_Inspector PRIVATE
@@ -223,23 +233,5 @@ target_compile_definitions(TutorMatch_Inspector PRIVATE
 )
 
 target_link_libraries(TutorMatch_Inspector PRIVATE
-    Qt6::Core
-)
-
-# ============================================================================
-# Standalone Console Application CLI Target
-# ============================================================================
-add_executable(TutorMatch_CLI
-    src/main.cpp
-    src/ui/ConsoleApp.cpp
-    ${CORE_SOURCES}
-    ${HEADERS}
-)
-
-target_compile_definitions(TutorMatch_CLI PRIVATE
-    PROJECT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
-)
-
-target_link_libraries(TutorMatch_CLI PRIVATE
     Qt6::Core
 )

@@ -42,10 +42,10 @@ Item {
                 }
             }
 
-            // SECTION 1: STATS METRICS CARDS (3 Cards)
+            // SECTION 1: STATS METRICS CARDS (4 Cards)
             GridLayout {
                 Layout.fillWidth: true
-                columns: 3
+                columns: (width > 800) ? 4 : 2
                 rowSpacing: 12
                 columnSpacing: 12
 
@@ -73,6 +73,28 @@ Item {
                         anchors.fill: parent; anchors.margins: 14; spacing: 4
                         Text { text: "ĐÁNH GIÁ TRUNG BÌNH"; font.pixelSize: 11; font.bold: true; color: Theme.textMuted }
                         Text { text: (tutorStatisticsRoot.statsData.averageRating || 5.0).toFixed(1) + " ★ (" + tutorStatisticsRoot.reviewsList.length + ")"; font.bold: true; font.pixelSize: 22; color: "#d97706" }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true; height: 95; radius: 10; color: Theme.cardBg; border.color: Theme.cardBorder
+                    ColumnLayout {
+                        anchors.fill: parent; anchors.margins: 14; spacing: 4
+                        Text { text: "TỔNG HỌC PHÍ TÍCH LŨY"; font.pixelSize: 11; font.bold: true; color: Theme.textMuted }
+                        Text { 
+                            text: ((tutorStatisticsRoot.statsData.totalEarnings || 0).toLocaleString(Qt.locale("vi_VN"), 'f', 0)) + " VNĐ"
+                            font.bold: true
+                            font.pixelSize: 20
+                            color: "#16a34a" 
+                        }
+                    }
+                    ToolTip.visible: mouseAreaStatsIncome.containsMouse
+                    ToolTip.text: "Giá trị học phí của các khóa học đã hoàn thành theo thỏa thuận; không đồng nghĩa với số tiền đã thực nhận."
+                    MouseArea {
+                        id: mouseAreaStatsIncome
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.NoButton
                     }
                 }
             }

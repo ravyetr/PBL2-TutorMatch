@@ -1,0 +1,73 @@
+stateDiagram-v2
+    %% =========================================================================
+    %% DIAGRAM 04: GUI NAVIGATION AND STATE MACHINE
+    %% =========================================================================
+
+    [*] --> App_Launch: gui_main.cpp khởi chạy
+
+    state App_Launch {
+        [*] --> Init_Composition_Root: Nạp Services & GUIBridge
+        Init_Composition_Root --> Load_QML_Engine: QQmlApplicationEngine
+        Load_QML_Engine --> Check_Session: isLoggedIn?
+    }
+
+    Check_Session --> LoginView: isLoggedIn == false
+    Check_Session --> MainDashboard: isLoggedIn == true (Auto-login / Saved)
+
+    state LoginView {
+        [*] --> LoginForm: Màn hình Đăng nhập mặc định
+        LoginForm --> RegisterStudentForm: Nhấn "Đăng ký Học viên"
+        RegisterStudentForm --> LoginForm: Hoàn tất / Quay lại
+        LoginForm --> RegisterTutorForm: Nhấn "Đăng ký Gia sư"
+        RegisterTutorForm --> LoginForm: Hoàn tất / Quay lại
+        LoginForm --> Authenticate: guiBridge.qmlLogin(user, pass)
+    }
+
+    Authenticate --> LoginView: Thất bại (Hiển thị lỗi)
+    Authenticate --> MainDashboard: Thành công (Role-based Routing)
+
+    state MainDashboard {
+        [*] --> DispatchRole
+
+        state DispatchRole <<choice>>
+        DispatchRole --> Student_Dashboard: Role == STUDENT
+        DispatchRole --> Tutor_Dashboard: Role == TUTOR
+        DispatchRole --> Admin_Dashboard: Role == ADMIN
+
+        state Student_Dashboard {
+            [*] --> StudentOverview
+            StudentOverview --> StudentTutorSearch: Tab 1 (Tìm kiếm gia sư)
+            StudentOverview --> StudentSmartMatch: Tab 2 (Gợi ý SmartMatch)
+            StudentOverview --> StudentBookings: Tab 3 (Khóa học & Lịch sử)
+
+            StudentTutorSearch --> BookingModal: Chọn "Đăng ký học"
+            StudentSmartMatch --> BookingModal: Chọn "Đăng ký học"
+            StudentOverview --> ProfileEditModal: Chỉnh sửa thông tin cá nhân
+            StudentBookings --> ReviewModal: Chọn "Gửi đánh giá" (COMPLETED / EARLY_TERMINATED)
+            StudentTutorSearch --> TutorDetailModal: Xem chi tiết hồ sơ gia sư
+        }
+
+        state Tutor_Dashboard {
+            [*] --> TutorOverview
+            TutorOverview --> TutorBookings: Tab 1 (Yêu cầu đăng ký mới)
+            TutorOverview --> TutorStudents: Tab 2 (Học viên & Khóa học đang dạy)
+            TutorOverview --> TutorStatistics: Tab 3 (Thống kê & Đánh giá)
+
+            TutorOverview --> ProfileEditModal: Chỉnh sửa chuyên môn & học phí
+            TutorBookings --> ConsensualModal: Xem điều khoản cam kết V1
+            TutorStudents --> EarlyTerminationDialog: Yêu cầu kết thúc sớm
+        }
+
+        state Admin_Dashboard {
+            [*] --> AdminOverview
+            AdminOverview --> AdminUsers: Tab 1 (Quản lý người dùng)
+            AdminOverview --> AdminMatches: Tab 2 (Quản lý kết nối khóa học)
+            AdminOverview --> AdminReviews: Tab 3 (Quản trị đánh giá)
+
+            AdminUsers --> UserDetailModal: Xem chi tiết & Khóa tài khoản
+            AdminMatches --> TerminateConfirmation: Buộc chấm dứt khóa học
+            AdminReviews --> DeleteReviewDialog: Xóa đánh giá vi phạm
+        }
+    }
+
+    MainDashboard --> LoginView: guiBridge.qmlLogout() (Đăng xuất)

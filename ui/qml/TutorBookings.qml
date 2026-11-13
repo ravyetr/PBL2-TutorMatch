@@ -236,6 +236,17 @@ Item {
                                     font.pixelSize: 11
                                     color: "#d97706"
                                 }
+
+                                Text {
+                                    visible: (modelData.earlyTerminationStatus === "PENDING" || modelData.status === "EARLY_TERMINATED") &&
+                                             modelData.earlyTerminationReason !== undefined &&
+                                             modelData.earlyTerminationReason !== null &&
+                                             modelData.earlyTerminationReason.trim() !== ""
+                                    text: "⚠️ Lý do kết thúc sớm: " + modelData.earlyTerminationReason
+                                    font.pixelSize: 11
+                                    font.italic: true
+                                    color: "#d46b08"
+                                }
                             }
 
                             Item { Layout.fillWidth: true }
